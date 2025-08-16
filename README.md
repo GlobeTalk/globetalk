@@ -42,19 +42,50 @@ GlobeTalk is an online platform that connects people from different countries to
 **Frontend:**
 - HTML
 - CSS
-- Javascript  
+- Javascript(Vanilla)  
 
 **Backend:**
-- Firebase(Firestore)  
+- Firebase(Firestore)
+- Firebase Auth  
+- Firebase Functions
 
-**Other Tools:**
-- OAuth for authentication   
+**Other Tools:**   
 - ESLint for code style
 
 ---
 
 ## 📁 Folder Structure
+**docs**
+- Storage for each Sprint Documents
 
+**scripts**
+- Store the orgranizations's script files
+
+**src**
+- **backend** - backend content
+- **frontend** - frontend content
+
+**tests**
+- Code testing environment files
+---
+
+## 📲 Installation
+- **Initialize npm**
+```bash
+npm init -y
+```
+- **Install ESlint**
+```bash
+npm install eslint --save-dev
+npx eslint --init
+```
+- **Install Jest**
+```bash
+npm install jest --save-dev
+```
+---
+
+## Usage
 ---
 
 ## 📜Contribution Guidelines
@@ -63,8 +94,6 @@ GlobeTalk is an online platform that connects people from different countries to
 - **Main Branch (`main`)**: Always stable, production-ready code.
 - **Testing Branch (`testing`)**: For integrating and validating features before merging into `main`.
 - **Feature Branches (`feature/xyz`)**: Created for each new feature or bug fix.
-
----
 
 ## 2. Workflow Steps
 1. **Create a Feature Branch**
@@ -83,18 +112,12 @@ GlobeTalk is an online platform that connects people from different countries to
    - Compare branch: your feature branch
    - Title: Short and descriptive
    - Description: Include purpose, changes made, and testing notes.
-
----
-
 ## 3. Code Review
 - At least **one reviewer** must approve.
 - Reviewers check:
   - Code quality
   - Functionality correctness
   - No breaking changes
-
----
-
 ## 4. Testing & Code Coverage
 - Run tests locally before PR.
 - CI pipeline should run:
@@ -102,19 +125,19 @@ GlobeTalk is an online platform that connects people from different countries to
   - Integration tests
   - Code coverage (minimum threshold: e.g., **80%**)
 - Fail the PR if coverage drops below the set threshold.
-
----
-
 ## 5. Merging Rules
 - **From `feature` → `testing`**: Allowed after approval and passing CI checks.
 - **From `testing` → `main`**: Only after all features are validated and tested.
-
----
-
 ## 6. Post-Merge
 - Delete merged feature branch.
 - Update local branches with:
   ```bash
   git checkout testing
   git pull origin testing
+  ```
+---
 
+## License
+---
+
+## Contact

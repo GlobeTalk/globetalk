@@ -1,0 +1,31 @@
+{
+  "name": "globetalk",
+  "version": "1.0.0",
+  "description": "A virtual pen pal platform connecting people worldwide through text, audio, and video messages. Designed to foster cultural exchange, language learning, and global friendships in a safe and moderated environment.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GlobeTalk/globetalk.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GlobeTalk/globetalk/issues"
+  },
+  "homepage": "https://github.com/GlobeTalk/globetalk#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0",
+    "jest": "^30.0.5"
+  }
+}

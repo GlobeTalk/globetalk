@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlobeTalk</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+        apiKey: "AIzaSyCtAw-A06ZJvKXfbfpNu9D8rYurdgX0sVk",
+        authDomain: "globetalk-2508c.firebaseapp.com",
+        projectId: "globetalk-2508c",
+        storageBucket: "globetalk-2508c.firebasestorage.app",
+        messagingSenderId: "1046584624165",
+        appId: "1:1046584624165:web:6ed616da6aafdb52ddebcc"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Sign in
+    window.signIn = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        document.getElementById("user-info").innerHTML = `
+          <p><strong>Signed in as:</strong> ${user.displayName}</p>
+          <p><img src="${user.photoURL}" alt="Profile picture" /></p>
+          <p>Email: ${user.email}</p>
+          <button onclick="signOutUser()">Sign Out</button>
+        `;
+      } catch (error) {
+        console.error(error);
+        alert("Sign-in failed!");
+      }
+    };
+
+    // Sign out
+    window.signOutUser = async () => {
+      await signOut(auth);
+      document.getElementById("user-info").innerHTML = `<p>Signed out.</p>`;
+    };
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to GlobeTalk</h1>
+    <p>Sign in to continue</p>
+    <button onclick="signIn()">Sign in with Google</button>
+    <div id="user-info"></div>
+  </div>
+</body>
+</html>

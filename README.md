@@ -27,7 +27,7 @@ GlobeTalk is an online platform that connects people from different countries to
 
 ---
 
-## ✨ Features
+## ✨ Features 
 - **Smart Matchmaking** – Find pen pals with shared interests or complementary languages.
 - **Text** - Text based only platfrom
 - **Cultural Exchange Prompts** – Conversation starters to encourage sharing.

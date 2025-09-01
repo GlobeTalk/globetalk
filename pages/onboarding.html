@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobeTalk - Create Your Profile</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #4a4a4a;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: #6c63ff;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .profile-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #6c63ff;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #4a4a4a;
+        }
+        
+        .section-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #6c63ff;
+            outline: none;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: #6c63ff;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #5a52d5;
+            transform: translateY(-2px);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Custom dropdown styling */
+        .custom-dropdown {
+            position: relative;
+            width: 100%;
+        }
+        
+        .dropdown-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .dropdown-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .dropdown-option:hover {
+            background: #f0f0f0;
+        }
+        
+        .current-location {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #6c63ff;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 GlobeTalk</h1>
+            <p class="subtitle">Create your anonymous profile to connect with pen pals worldwide</p>
+        </header>
+        
+        <form class="profile-form" id="profileForm">
+            <!-- Basic Identity -->
+            <div class="form-section">
+                <h2 class="section-title"><span class="section-icon">👤</span> Basic Identity</h2>
+                
+                <div class="form-group">
+                    <label for="ageRange">Age Range:</label>
+                    <select id="ageRange" name="ageRange" required>
+                        <option value="">Select your age range</option>
+                        <option value="under18">Under 18</option>
+                        <option value="18-24">18–24</option>
+                        <option value="25-34">25–34</option>
+                        <option value="35-44">35–44</option>
+                        <option value="45+">45+</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="region">Region/Time Zone:</label>
+                    <div class="custom-dropdown">
+                        <input type="text" id="region" name="region" class="dropdown-input" placeholder="Start typing or select from dropdown" required>
+                        <div class="dropdown-options" id="regionOptions">
+                            <!-- Options will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="current-location">
+                        <span id="detectedLocation">Detecting your region...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Languages & Hobbies -->
+            <div class="form-section">
+                <h2 class="section-title"><span class="section-icon">💬</span> Languages & Hobbies</h2>
+                
+                <div class="form-group">
+                    <label for="languages">Languages you speak (or want to practice):</label>
+                    <input type="text" id="languages" name="languages" placeholder="e.g., English, isiZulu, French (learning)" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="hobbies">Hobbies you enjoy:</label>
+                    <input type="text" id="hobbies" name="hobbies" placeholder="e.g., cycling, drawing, chess" required>
+                </div>
+            </div>
+            
+            <!-- Personal Flavor -->
+            <div class="form-section">
+                <h2 class="section-title"><span class="section-icon">✨</span> Personal Flavor</h2>
+                
+                <div class="form-group">
+                    <label for="threeWords">Three words that describe you:</label>
+                    <input type="text" id="threeWords" name="threeWords" placeholder="e.g., curious, playful, night-owl" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="happyThing">A small thing that makes you happy:</label>
+                    <input type="text" id="happyThing" name="happyThing" placeholder="e.g., fresh bread smell" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dailyRitual">Your favorite daily ritual:</label>
+                    <input type="text" id="dailyRitual" name="dailyRitual" placeholder="e.g., morning tea on the balcony" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="wonderAbout">One thing you often wonder about:</label>
+                    <input type="text" id="wonderAbout" name="wonderAbout" placeholder="e.g., what stars look like up close" required>
+                </div>
+            </div>
+            
+            <!-- Cultural Connection -->
+            <div class="form-section">
+                <h2 class="section-title"><span class="section-icon">🌐</span> Cultural Connection</h2>
+                
+                <div class="form-group">
+                    <label for="uniqueThing">Something unique about where you live:</label>
+                    <input type="text" id="uniqueThing" name="uniqueThing" placeholder="e.g., We celebrate spring with water fights" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="proverb">A saying/proverb from your culture:</label>
+                    <input type="text" id="proverb" name="proverb" placeholder="e.g., When elephants fight, the grass suffers" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="localFood">A local food or drink you recommend:</label>
+                    <input type="text" id="localFood" name="localFood" placeholder="e.g., Try rooibos tea with honey" required>
+                </div>
+            </div>
+            
+            <!-- Mystery & Fun -->
+            <div class="form-section">
+                <h2 class="section-title"><span class="section-icon">🎭</span> Mystery & Fun</h2>
+                
+                <div class="form-group">
+                    <label for="season">If you were a season, which one would you be? Why?</label>
+                    <textarea id="season" name="season" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="animal">Pick an animal that matches your personality:</label>
+                    <input type="text" id="animal" name="animal" placeholder="e.g., Dolphin" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="song">What song would play in your "life movie intro scene"?</label>
+                    <input type="text" id="song" name="song" placeholder="e.g., Happy by Pharrell Williams" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="penPalType">Finish the sentence: "I am the kind of pen pal who…"</label>
+                    <textarea id="penPalType" name="penPalType" required></textarea>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">Create My Profile</button>
+        </form>
+    </div>
+    
+    <footer>
+        <p>GlobeTalk - Connecting hearts and minds across the globe</p>
+    </footer>
+
+    <script>
+        // Region data with timezone examples
+        const regions = [
+            "Africa (Central)",
+            "Africa (Eastern)",
+            "Africa (Southern)",
+            "Africa (Western)",
+            "Asia (Central)",
+            "Asia (Eastern)",
+            "Asia (Southern)",
+            "Asia (Southeastern)",
+            "Asia (Western)",
+            "Australia & Pacific",
+            "Europe (Central)",
+            "Europe (Eastern)",
+            "Europe (Western)",
+            "North America (Central)",
+            "North America (Eastern)",
+            "North America (Mountain)",
+            "North America (Pacific)",
+            "North America (Western)",
+            "South America (Andean)",
+            "South America (Brazilian)",
+            "South America (Southern)",
+            "South America (Western)"
+        ];
+
+        // Timezone to region mapping
+        const timezoneToRegion = {
+            "Africa/": "Africa",
+            "Asia/": "Asia",
+            "Australia/": "Australia & Pacific",
+            "Europe/": "Europe",
+            "America/New_York": "North America (Eastern)",
+            "America/Chicago": "North America (Central)",
+            "America/Denver": "North America (Mountain)",
+            "America/Los_Angeles": "North America (Pacific)",
+            "America/Argentina/": "South America (Southern)",
+            "America/Sao_Paulo": "South America (Brazilian)",
+            "America/Lima": "South America (Western)",
+            "Pacific/": "Australia & Pacific"
+        };
+
+        // Populate region dropdown
+        function populateRegionOptions() {
+            const optionsContainer = document.getElementById('regionOptions');
+            optionsContainer.innerHTML = '';
+            
+            regions.forEach(region => {
+                const option = document.createElement('div');
+                option.className = 'dropdown-option';
+                option.textContent = region;
+                option.addEventListener('click', () => {
+                    document.getElementById('region').value = region;
+                    optionsContainer.style.display = 'none';
+                });
+                optionsContainer.appendChild(option);
+            });
+        }
+
+        // Detect user's timezone and suggest region
+        function detectUserRegion() {
+            try {
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                document.getElementById('detectedLocation').textContent = `Detected timezone: ${timezone}`;
+                
+                // Find matching region
+                for (const [tzPattern, region] of Object.entries(timezoneToRegion)) {
+                    if (timezone.includes(tzPattern)) {
+                        document.getElementById('region').value = region;
+                        document.getElementById('detectedLocation').textContent += ` | Suggested region: ${region}`;
+                        break;
+                    }
+                }
+            } catch (e) {
+                document.getElementById('detectedLocation').textContent = "Could not detect your timezone";
+            }
+        }
+
+        // Initialize region dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            populateRegionOptions();
+            detectUserRegion();
+            
+            const regionInput = document.getElementById('region');
+            const optionsContainer = document.getElementById('regionOptions');
+            
+            // Show dropdown when input is focused
+            regionInput.addEventListener('focus', () => {
+                optionsContainer.style.display = 'block';
+            });
+            
+            // Filter options based on input
+            regionInput.addEventListener('input', () => {
+                const filter = regionInput.value.toLowerCase();
+                const options = document.querySelectorAll('.dropdown-option');
+                
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    option.style.display = text.includes(filter) ? 'block' : 'none';
+                });
+                
+                optionsContainer.style.display = 'block';
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!regionInput.contains(e.target) && !optionsContainer.contains(e.target)) {
+                    optionsContainer.style.display = 'none';
+                }
+            });
+        });
+
+        // Import the functions you need from the SDKs
+import { saveUserProfile } from './src/profile.js';
+import { auth } from './src/firebase.js';
+import { onAuthStateChanged } from "firebase/auth";
+
+// Wait for page to load
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if user is logged in
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // User is signed in
+      const userId = user.uid;
+      console.log("User ID:", userId);
+      
+      // Set up form submission
+      document.getElementById('profileForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        // Get all form values
+        const formData = {
+          ageRange: document.getElementById('ageRange').value,
+          region: document.getElementById('region').value,
+          languages: document.getElementById('languages').value.split(',').map(lang => lang.trim()),
+          hobbies: document.getElementById('hobbies').value.split(',').map(hobby => hobby.trim()),
+          threeWords: document.getElementById('threeWords').value,
+          happyThing: document.getElementById('happyThing').value,
+          dailyRitual: document.getElementById('dailyRitual').value,
+          wonderAbout: document.getElementById('wonderAbout').value,
+          uniqueThing: document.getElementById('uniqueThing').value,
+          proverb: document.getElementById('proverb').value,
+          localFood: document.getElementById('localFood').value,
+          season: document.getElementById('season').value,
+          animal: document.getElementById('animal').value,
+          song: document.getElementById('song').value,
+          penPalType: document.getElementById('penPalType').value,
+          createdAt: new Date()
+        };
+        
+        // Save to Firebase
+        const success = await saveUserProfile(userId, formData);
+        
+        if (success) {
+          alert('Profile created successfully! 🎉');
+          // Redirect to main app
+          window.location.href = 'index.html';
+        } else {
+          alert('Error saving profile. Please try again.');
+        }
+      });
+      
+    } else {
+      // User is signed out
+      alert('You need to be logged in to create a profile.');
+      window.location.href = 'login.html'; // Redirect to login
+    }
+  });
+});
+    </script>
+</body>
+</html>

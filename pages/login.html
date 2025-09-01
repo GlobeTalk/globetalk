@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Firebase Login TDD</title>
+  <!-- Add Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <button id="loginBtn">Login with Google</button>
+
+  <script type="module">
+    
+    import { login } from '../login.js';
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const user = await login();
+      if (user) alert(`Hello, ${user.displayName}`);
+      else alert('Login failed');
+    });
+  </script>
+</body>
+</html>

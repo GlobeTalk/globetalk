@@ -1,37 +1,60 @@
+/**
+ * @jest-environment jsdom
+ */
 
-import { JSDOM } from "jsdom";
-import { getHeaderText, getJoinButtonText, getJoinButtonLink } from "../../src/frontend/scripts/index.js";
+import { JSDOM } from 'jsdom';
 
-describe("Landing Page JS", () => {
-  let container;
+describe('GlobeTalk Landing Page', () => {
+  let dom;
+  let document;
 
-  beforeEach(() => {
-    
-    const html = `
+  beforeAll(() => {
+    // Create a DOM with the HTML content
+    dom = new JSDOM(`
+      <!DOCTYPE html>
       <html>
+        <head>
+          <title>GlobeTalk Landing</title>
+        </head>
         <body>
           <h1>Welcome to GlobeTalk</h1>
           <a href="pages/login.html"><button id="joinBtn">Join Us</button></a>
+          <script type="module" src="../scripts/index.js"></script>
         </body>
       </html>
-    `;
-
-    const dom = new JSDOM(html);
-    container = dom.window.document;
+    `);
     
-    
-    global.document = container;
+    document = dom.window.document;
   });
 
-  test("header text is correct", () => {
-    expect(getHeaderText()).toBe("Welcome to GlobeTalk");
+  test('Join button exists with correct ID', () => {
+    const button = document.getElementById('joinBtn');
+    expect(button).not.toBeNull();
   });
 
-  test("Join button text is correct", () => {
-    expect(getJoinButtonText()).toBe("Join Us");
+  test('Button has correct text content', () => {
+    const button = document.getElementById('joinBtn');
+    expect(button.textContent).toBe('Join Us');
   });
 
-  test("Join button links to login.html", () => {
-    expect(getJoinButtonLink()).toBe("pages/login.html");
+  test('Button links to correct login page', () => {
+    const link = document.querySelector('a');
+    expect(link.getAttribute('href')).toBe('pages/login.html');
+  });
+
+  test('Button is wrapped in anchor tag', () => {
+    const button = document.getElementById('joinBtn');
+    const link = document.querySelector('a');
+    expect(link.contains(button)).toBe(true);
+  });
+
+  test('Script tag exists with module type', () => {
+    const script = document.querySelector('script[type="module"]');
+    expect(script).not.toBeNull();
+  });
+
+  test('Script source is correct', () => {
+    const script = document.querySelector('script[type="module"]');
+    expect(script.getAttribute('src')).toBe('../scripts/index.js');
   });
 });

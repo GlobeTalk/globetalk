@@ -52,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginBtn = document.getElementById('loginBtn');
   const statusMessage = document.getElementById('statusMessage');
   
-  // Add click event listener to the button
   loginBtn.addEventListener('click', async () => {
     try {
       loginBtn.disabled = true;
@@ -63,8 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (user) {
         statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting...`;
         statusMessage.className = 'status success';
-        
-        // Redirect to main app after successful login
+
+        // Redirect to onboarding page after successful login
         setTimeout(() => {
           window.location.href = '../pages/onboarding.html';
         }, 1500);
@@ -95,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Additional auth functions you might need
+// Additional auth functions
 function getCurrentUser() {
   return auth.currentUser;
 }

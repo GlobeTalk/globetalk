@@ -1,9 +1,9 @@
 // List of avatar image filenames in the avatars folder
 const avatarFilenames = [
-    'female.svg',
-    'baddie.svg',
+    'woman.svg',
+    'girl.svg',
     'boy.svg',
-    'male.svg'
+    'man.svg'
 ];
 
 const avatarOptions = avatarFilenames.map(filename => {

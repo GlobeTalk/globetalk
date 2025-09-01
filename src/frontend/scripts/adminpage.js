@@ -1,19 +1,22 @@
 import { getActiveUserCount, getFlaggedUserCount, getBannedUserCount } from '../../services/admin.js';
 
+export async function getAdminCounts() {
+    return {
+        active: await getActiveUserCount(),
+        flagged: await getFlaggedUserCount(),
+        banned: await getBannedUserCount()
+    };
+}
+
+// Keep your DOMContentLoaded code for the actual page
 document.addEventListener('DOMContentLoaded', async () => {
-    // Get elements
     const activeUsersEl = document.getElementById('activeUsersCount');
     const flaggedUsersEl = document.getElementById('flaggedUsersCount');
     const bannedUsersEl = document.getElementById('bannedUsersCount');
 
-    // Fetch and display counts
-    if (activeUsersEl) {
-        activeUsersEl.textContent = await getActiveUserCount();
-    }
-    if (flaggedUsersEl) {
-        flaggedUsersEl.textContent = await getFlaggedUserCount();
-    }
-    if (bannedUsersEl) {
-        bannedUsersEl.textContent = await getBannedUserCount();
-    }
+    const counts = await getAdminCounts();
+
+    if (activeUsersEl) activeUsersEl.textContent = counts.active;
+    if (flaggedUsersEl) flaggedUsersEl.textContent = counts.flagged;
+    if (bannedUsersEl) bannedUsersEl.textContent = counts.banned;
 });

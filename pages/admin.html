@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobeTalk Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../src/frontend/styles/admin.css">
+</head>
+<body>
+    <div>
+        <!-- Navigation Header -->
+        <header>
+            <div>
+                <h1>GlobeTalk</h1>
+            </div>
+            <nav>
+                <a href="#">Home</a>
+                <a href="#">Settings & Safety</a>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Admin Dashboard Title -->
+            <div class="dashboard-title">
+                <h2>Admin Dashboard</h2>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <!-- Active Users Card -->
+                <div class="stat-card">
+                    <div id="activeUsersCount">...</div>
+                    <div>Active users</div>
+                </div>
+
+                <!-- Flagged Reports Card -->
+                <div class="stat-card">
+                    <div id="flaggedUsersCount">...</div>
+                    <div>Flagged reports</div>
+                </div>
+
+                <!-- Banned Accounts Card -->
+                <div class="stat-card">
+                    <div id="bannedUsersCount">...</div>
+                    <div>Banned accounts</div>
+                </div>
+            </div>
+
+            <!-- Flagged Content Section -->
+            <div class="flagged-content">
+                <h3>Flagged Content</h3>
+                <!-- Content Item -->
+                <div class="content-item">
+                    <div class="flex-container">
+                        <div class="user-info">
+                            <div class="user-details">
+                                <span>User123</span>
+                                <span>29 August</span>
+                            </div>
+                            <div>Report: Sending Offensive messages</div>
+                        </div>
+                        <button>
+                            <span>Manage user</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script type="module" src="../src/frontend/scripts/adminpage.js"></script>
+</body>
+</html>

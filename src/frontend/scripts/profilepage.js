@@ -12,9 +12,18 @@ const avatarOptions = avatarFilenames.map(filename => {
     return {
         id,
         name,
-        img: `avatars/${filename}`
+        img: `../src/frontend/assets/${filename}`
     };
 });
+
+// Default SVG avatar (inline)
+const defaultAvatarSVG = `
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="40" fill="#E0E0E0"/>
+        <circle cx="40" cy="32" r="16" fill="#BDBDBD"/>
+        <ellipse cx="40" cy="60" rx="22" ry="12" fill="#BDBDBD"/>
+    </svg>
+`;
 
 class ProfilePictureSelector {
     constructor() {
@@ -32,9 +41,9 @@ class ProfilePictureSelector {
         const saved = localStorage.getItem('globetalk-avatar');
         if (saved) {
             const avatar = avatarOptions.find(a => a.id === saved);
-            return avatar || avatarOptions[0];
+            return avatar || null;
         }
-        return avatarOptions[0];
+        return null;
     }
 
     saveAvatar(avatarId) {
@@ -279,7 +288,7 @@ class ProfilePictureSelector {
         const options = document.querySelectorAll('.avatar-option');
         options.forEach(option => {
             option.classList.remove('selected');
-            if (option.dataset.avatarId === this.currentAvatar.id) {
+            if (this.currentAvatar && option.dataset.avatarId === this.currentAvatar.id) {
                 option.classList.add('selected');
             }
         });
@@ -297,7 +306,11 @@ class ProfilePictureSelector {
 
     updateProfilePicture() {
         const profilePic = document.querySelector('.profile-pic');
-        profilePic.innerHTML = `<img src="${this.currentAvatar.img}" alt="${this.currentAvatar.name}" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
+        if (this.currentAvatar) {
+            profilePic.innerHTML = `<img src="${this.currentAvatar.img}" alt="${this.currentAvatar.name}" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
+        } else {
+            profilePic.innerHTML = defaultAvatarSVG;
+        }
     }
 }
 

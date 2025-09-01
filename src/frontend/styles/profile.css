@@ -169,6 +169,22 @@ body {
     font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
 }
 
+.update-profile-btn {
+    width: 100%;
+    max-width: 347px;
+    height: 68px;
+    background-color: #1976D2;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.3s;
+    color: white;
+    font-size: 25px;
+    font-weight: normal;
+    font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+
+}
+
 .start-chat-btn:hover {
     opacity: 0.9;
 }

@@ -47,3 +47,14 @@ export async function getActiveUserCount() {
         return 0;
     }
 }
+
+export async function addBannedUser(userId) {
+    try {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, { banned: true });
+        return true;
+    } catch (error) {
+        console.error("Error banning user:", error);
+        return false;
+    }
+}

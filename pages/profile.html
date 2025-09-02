@@ -72,9 +72,7 @@
                 <button class="start-chat-btn">
                     Start a Chat
                 </button>
-                <button class="update-profile-btn" id="updateProfileBtn">
-                    Update Profile
-                </button>
+
                 <div class="learn-more-link">
                     <a href="dashboard.html" style="text-decoration: none;">
                         <span class="learn-more-purple">Learn more</span>
@@ -92,9 +90,9 @@
 
     <script src="../src/frontend/scripts/profilepage.js"></script>
     <script type="module">
-        import { auth, db } from '../../src/services/firebase.js';
-        import { onAuthStateChanged } from "firebase/auth";
-        import { doc, getDoc } from "firebase/firestore";
+        import { auth, db } from '../../src/services/firebase-temp.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         // Utility to render hobbies as icons/text (simple version)
         function renderHobbies(hobbies) {
@@ -125,7 +123,7 @@
                         const profileSnap = await getDoc(profileRef);
                         if (profileSnap.exists()) {
                             const data = profileSnap.data();
-                            document.getElementById('username').textContent = userId;
+                            document.getElementById('username').textContent = data.username || 'Unknown User';
                             document.getElementById('userDescription').textContent = data.threeWords || '';
                             document.getElementById('ageDetail').textContent = `Age: ${data.ageRange || ''}`;
                             document.getElementById('genderDetail').textContent = `Gender: ${data.gender || ''}`;
@@ -141,13 +139,8 @@
                                 }
                             }, 500);
 
-                            // Update Profile button event listener (only for authenticated users)
-                            const updateBtn = document.getElementById('updateProfileBtn');
-                            if (updateBtn) {
-                                updateBtn.addEventListener('click', () => {
-                                    window.location.href = 'onboarding.html';
-                                });
-                            }
+                        
+
                         } else {
                             document.querySelector('.profile-card').innerHTML = '<p>No profile found.</p>';
                         }

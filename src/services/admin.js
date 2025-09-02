@@ -1,5 +1,5 @@
-import { db } from './firebase.js';
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from './firebase-temp.js';
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 // Get total number of banned users
 export async function getBannedUserCount() {
@@ -22,6 +22,17 @@ export async function getFlaggedUserCount() {
     } catch (error) {
         console.error("Error getting flagged user count:", error);
         return 0;
+    }
+}
+
+export async function getFlaggedUsers() {
+    try {
+        const q = collection(db, "flaggedUsers");
+        const snapshot = await getDocs(q);
+        return snapshot;
+    } catch (error) {
+        console.error("Error getting flagged users:", error);
+        return [];
     }
 }
 

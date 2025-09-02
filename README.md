@@ -2,6 +2,10 @@
 A virtual pen pal platform connecting people worldwide through text, audio, and video messages. Designed to foster cultural exchange, language learning, and global friendships in a safe and moderated environment.
 
 ---
+## Codecov
+[![codecov](https://codecov.io/gh/GlobeTalk/globetalk/graph/badge.svg?token=HK5GTNDVSR)](https://codecov.io/gh/GlobeTalk/globetalk)
+
+---
 
 ## 📌 Table of Contents
 - [About the Project](#about-the-project)
@@ -27,7 +31,7 @@ GlobeTalk is an online platform that connects people from different countries to
 
 ---
 
-## ✨ Features
+## ✨ Features 
 - **Smart Matchmaking** – Find pen pals with shared interests or complementary languages.
 - **Text** - Text based only platfrom
 - **Cultural Exchange Prompts** – Conversation starters to encourage sharing.

@@ -65,6 +65,36 @@
             onAuthStateChanged(auth, async (user) => {
                 if (!user) return;
                 const userId = user.uid;
+
+                // Render pen pal suggestions
+                const penPalCards = document.getElementById('penPalCards');
+                if (penPalCards) {
+                    penPalCards.innerHTML = '<span>Loading...</span>';
+                    try {
+                        const suggestions = await import('../src/services/userdashboard.js').then(mod => mod.getPenPalSuggestions(userId));
+                        penPalCards.innerHTML = '';
+                        if (suggestions.length === 0) {
+                            penPalCards.innerHTML = '<span>No pen pal suggestions found.</span>';
+                        } else {
+                            suggestions.forEach(user => {
+                                const card = document.createElement('div');
+                                card.className = 'pen-pal-card';
+                                card.innerHTML = `
+                                    <h4>${user.username || 'Unknown'}</h4>
+                                    <div class="pen-pal-info">
+                                        <p><strong>Region:</strong> ${user.region || 'N/A'}</p>
+                                        <p><strong>Hobbies:</strong> ${(user.hobbies && user.hobbies.length) ? user.hobbies.join(', ') : 'N/A'}</p>
+                                        <p><strong>Languages:</strong> ${(user.languages && user.languages.length) ? user.languages.join(', ') : 'N/A'}</p>
+                                    </div>
+                                `;
+                                penPalCards.appendChild(card);
+                            });
+                        }
+                    } catch (e) {
+                        penPalCards.innerHTML = '<span>Error loading pen pal suggestions.</span>';
+                    }
+                }
+
                 // Render active conversations
                 const container = document.getElementById('conversationsContainer');
                 if (container) {

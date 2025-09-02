@@ -5,6 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GlobeTalk Landing</title>
   <style>
+    /* Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #add8e6;
+      color: #0d1b2a;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 60px;
+      background: transparent;
+    }
+
+    .logo {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #000060;
+    }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 30px;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: #14213d;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+
+    .nav-links a:hover {
+      color: #0077b6;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #14213d;
+    }
+
+    .hero p {
+      font-size: 1rem;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    button {
+      background-color: #0077b6;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #023e8a;
+    }
+
+    /* Images Section */
+    .images {
+      position: relative;
+      margin-top: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .cloud {
+      width: 100px;
+      position: absolute;
+      top: 20px;
+    }
+
+    .cloud-left {
+      left: 10%;
+    }
+
+    .cloud-right {
+      right: 10%;
+    }
+
+    .girl {
+      width: 180px;
+    }
+
+    .globe {
+      width: 120px;
+    }
+
+    .boy {
+      width: 160px;
+    }
+  </style>
+
+  <!--<style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
@@ -48,13 +166,44 @@
     .join-btn:active {
       transform: translateY(0);
     }
-  </style>
+  </style>-->
 </head>
 <body>
-  <div class="container">
+ <header>
+    <nav class="navbar">
+      <div class="logo">GlobeTalk</div>
+      <ul class="nav-links">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Find Pen Pal</a></li>
+        <li><a href="#">Settings & Safety</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Connect with Pen Pals <br> Around the World</h1>
+    <p>GlobeTalk is a virtual Pen Pals website where you can make friends from different countries through letter exchange</p>
+    <a href="pages/login.html"><button id="getStartedBtn">Get started</button></a>
+    <div class="images">
+      <img src="pages/images/cloud1.png" alt="girl" class="clould-left">
+      
+      <img src="pages/images/user1.png" alt="girl" class="girl">
+      <img src="pages/images/globe.webp" alt="globe" class="globe">
+      <img src="pages/images/user2.png" alt="boy" class="boy">
+      <img src="pages/images/cloud2.png" alt="girl" class="clould-right">
+    </div>
+  </section>
+
+  <script>
+    document.getElementById("getStartedBtn").addEventListener("click", () => {
+      alert("Welcome to GlobeTalk! Let's help you find a Pen Pal.");
+    });
+  </script>
+  <!--<div class="container">
     <h1>Welcome to GlobeTalk</h1>
     <a href="pages/login.html"><button id="joinBtn" class="join-btn">Join Us</button></a>
-  </div>
+  </div>-->
 
 </body>
 </html>

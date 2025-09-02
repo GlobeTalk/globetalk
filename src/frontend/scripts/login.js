@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const user = await login();
       
       if (user) {
-        statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting...`;
         statusMessage.className = 'status success';
 
         // Redirect to onboarding page after successful login

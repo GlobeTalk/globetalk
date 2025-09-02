@@ -79,6 +79,7 @@
                             suggestions.forEach(user => {
                                 const card = document.createElement('div');
                                 card.className = 'pen-pal-card';
+                                card.style.cursor = 'pointer';
                                 card.innerHTML = `
                                     <h4>${user.username || 'Unknown'}</h4>
                                     <div class="pen-pal-info">
@@ -87,6 +88,10 @@
                                         <p><strong>Languages:</strong> ${(user.languages && user.languages.length) ? user.languages.join(', ') : 'N/A'}</p>
                                     </div>
                                 `;
+                                card.onclick = () => {
+                                    // Redirect to profile.html with Firestore document id
+                                    window.location.href = `../pages/profile.html?userid=${encodeURIComponent(user._docId)}`;
+                                };
                                 penPalCards.appendChild(card);
                             });
                         }

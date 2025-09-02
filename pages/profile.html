@@ -114,42 +114,52 @@
         `;
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Helper to get query param
+            function getQueryParam(param) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(param);
+            }
             onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    const userId = user.uid;
-                    // Fetch user profile from Firestore
-                    const profileRef = doc(db, "users", userId);
-                    try {
-                        const profileSnap = await getDoc(profileRef);
-                        if (profileSnap.exists()) {
-                            const data = profileSnap.data();
-                            document.getElementById('username').textContent = data.username || 'Unknown User';
-                            document.getElementById('userDescription').textContent = data.threeWords || '';
-                            document.getElementById('ageDetail').textContent = `Age: ${data.ageRange || ''}`;
-                            document.getElementById('genderDetail').textContent = `Gender: ${data.gender || ''}`;
-                            document.getElementById('regionDetail').textContent = `Region and Timezone: ${data.region || ''}`;
-                            document.getElementById('languagesDetail').textContent = `Languages: ${(data.languages || []).join(', ')}`;
-                            document.getElementById('hobbiesList').innerHTML = renderHobbies(data.hobbies || []);
-                            // Avatar selection and rendering is handled by profilepage.js
-                            // If profilepage.js does not set avatar, fallback to default SVG
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                // Require userId from query param
+                const userId = getQueryParam('userId') || getQueryParam('userid');
+                if (!userId) {
+                    document.querySelector('.main-container').innerHTML = '<div style="color:red;font-size:1.2rem;padding:2rem;">Error: No userId provided in the URL.</div>';
+                    return;
+                }
+                // Fetch user profile from Firestore
+                console.log("Fetching profile for userId:", userId);
+                const profileRef = doc(db, "users", userId);
+                try {
+                    const profileSnap = await getDoc(profileRef);
+                    if (profileSnap.exists()) {
+                        const data = profileSnap.data();
+                        document.getElementById('username').textContent = data.username || 'Unknown User';
+                        document.getElementById('userDescription').textContent = data.threeWords || data.description || '';
+                        document.getElementById('ageDetail').textContent = `Age: ${data.ageRange || data.age || ''}`;
+                        document.getElementById('genderDetail').textContent = `Gender: ${data.gender || ''}`;
+                        document.getElementById('regionDetail').textContent = `Region: ${data.region || ''}`;
+                        document.getElementById('languagesDetail').textContent = `Languages: ${(Array.isArray(data.languages) ? data.languages.join(', ') : (data.languages || ''))}`;
+                        document.getElementById('hobbiesList').innerHTML = renderHobbies(data.hobbies || []);
+                        // Avatar selection and rendering
+                        if (data.avatarUrl) {
+                            document.getElementById('profilePic').innerHTML = `<img src="${data.avatarUrl}" alt="Avatar" style="width:80px;height:80px;border-radius:50%;">`;
+                        } else {
                             setTimeout(() => {
                                 const profilePic = document.getElementById('profilePic');
                                 if (profilePic && profilePic.innerHTML.trim() === '') {
                                     profilePic.innerHTML = defaultAvatarSVG;
                                 }
                             }, 500);
-
-                        
-
-                        } else {
-                            document.querySelector('.profile-card').innerHTML = '<p>No profile found.</p>';
                         }
-                    } catch (e) {
-                        const profilePic = document.getElementById('profilePic');
-                        if (profilePic) profilePic.innerHTML = defaultAvatarSVG;
+                    } else {
+                        document.querySelector('.profile-card').innerHTML = '<p>No profile found.</p>';
                     }
-                } else {
-                    window.location.href = 'login.html';
+                } catch (e) {
+                    document.querySelector('.profile-card').innerHTML = '<p>Error loading profile.</p>';
                 }
             });
         });

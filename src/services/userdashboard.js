@@ -1,25 +1,28 @@
 import { db } from './firebase-temp.js';
-import { doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { doc, getDoc, query, collection, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 
 
 // Update specific profile fields
-export async function getActiveConversations(userId) {
-const q = query(
+export async function getActiveConversations(username) {
+  const q = query(
     collection(db, "conversations"),
-    where("participants", "array-contains", userId),
+    where("participants", "array-contains", username),
     orderBy("lastUpdated", "desc")
   );
   const snap = await getDocs(q);
 
   return snap.docs.map(doc => {
     const data = doc.data();
-    const otherUser = data.participants.find(p => p !== userId);
+    const otherUser = data.participants.find(p => p !== username);
     return {
-      id: doc.id,
       otherUser,
-      lastMessage: data.lastMessage,
       lastUpdated: data.lastUpdated.toDate()
     };
   });
+}
+
+export async function getUsername(userId) {
+  const userDoc = await getDoc(doc(db, "users", userId));
+  return userDoc.exists() ? userDoc.data().username : null;
 }

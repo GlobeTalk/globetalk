@@ -11,7 +11,7 @@ export default {
   testMatch: ["**/tests/**/*.test.js"],
   testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {
-    "^firebase/(.*)$": "<rootDir>/node_modules/firebase/$1"
+    "^https://www.gstatic.com/firebasejs/9.22.0/(.*)$": "<rootDir>/tests/mocks/$1"
   },
   moduleDirectories: ["node_modules", "src"],
   roots: ["<rootDir>/src", "<rootDir>/tests"],
@@ -21,5 +21,5 @@ export default {
   
   setupFiles: ["./tests/text-encoder-setup.js"],
  
-  setupFilesAfterEnv: ["./tests/setup.js"]
+  setupFilesAfterEnv: ["@testing-library/jest-dom"]
 };

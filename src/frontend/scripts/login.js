@@ -58,14 +58,47 @@ document.addEventListener('DOMContentLoaded', () => {
       loginBtn.innerHTML = 'Signing in...';
       
       const user = await login();
-      
+      console.log(user.uid);
       if (user) {
+        // Check if user is banned
+        try {
+          // Dynamically import admin service
+          const adminModule = await import('../../services/admin.js');
+          const isBanned = await adminModule.isBannedUser(user.uid);
+          if (isBanned) {
+            statusMessage.textContent = 'You cannot login because your account has been banned.';
+            statusMessage.className = 'status error';
+            resetLoginButton();
+            await logout();
+            return;
+          }
+        } catch (banErr) {
+          console.error('Error checking ban status:', banErr);
+          statusMessage.textContent = 'Error checking ban status. Please try again.';
+          statusMessage.className = 'status error';
+          resetLoginButton();
+          await logout();
+          return;
+        }
+        // Check if user is admin
+        try {
+          const adminModule = await import('../../services/admin.js');
+          const isAdmin = await adminModule.isAdmin(user.uid);
+          if (isAdmin) {
+            statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting to admin dashboard...`;
+            statusMessage.className = 'status success';
+            setTimeout(() => {
+              window.location.href = '../pages/admin.html';
+            }, 1500);
+            return;
+          }
+        } catch (adminErr) {
+          console.error('Error checking admin status:', adminErr);
+        }
         statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting...`;
         statusMessage.className = 'status success';
-
-        // Redirect to onboarding page after successful login
         setTimeout(() => {
-          window.location.href = '../pages/onboarding.html';
+          //window.location.href = '../pages/onboarding.html';
         }, 1500);
       } else {
         statusMessage.textContent = 'Login failed. Please try again.';

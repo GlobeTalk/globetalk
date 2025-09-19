@@ -1,4 +1,9 @@
-import { getActiveUserCount, getFlaggedUserCount, getBannedUserCount, getFlaggedUsers } from '../../services/admin.js';
+import { getActiveUserCount, getFlaggedUserCount, getBannedUserCount, getFlaggedUsers, banUser } from '../../services/admin.js';
+
+// Import auth functions
+import { auth } from '../../services/firebase-temp.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
 
 export async function getAdminCounts() {
     return {
@@ -10,6 +15,13 @@ export async function getAdminCounts() {
 
 // Keep your DOMContentLoaded code for the actual page
 document.addEventListener('DOMContentLoaded', async () => {
+
+    
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            window.location.href = '../pages/login.html';
+        }
+    });
     const activeUsersEl = document.getElementById('activeUsersCount');
     const flaggedUsersEl = document.getElementById('flaggedUsersCount');
     const bannedUsersEl = document.getElementById('bannedUsersCount');
@@ -48,8 +60,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         document.body.appendChild(modal);
         document.getElementById('closeModalBtn').onclick = () => modal.remove();
-        document.getElementById('banUserBtn').onclick = () => {
-            onBan();
+        document.getElementById('banUserBtn').onclick = async () => {
+            await onBan();
             modal.remove();
         };
         // Close modal on outside click
@@ -66,9 +78,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 flaggedSnapshot.forEach(doc => {
                     const data = doc.data();
-                    const userid = data.userid || 'Unknown User';
-                    let dateStr = data.date || '';
-                    const report = data.report || 'No reason provided';
+                    console.log('report:', doc.id,  data);
+                    const userid = data.reportedUid || 'Unknown User';
+                    let dateStr = data.timestamp || '';
+                    const report = data.reason || 'No reason provided';
 
                     // Handle Firestore Timestamp or string
                     if (typeof dateStr === 'object' && dateStr !== null && typeof dateStr.toDate === 'function') {
@@ -118,11 +131,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `;
                     // Add event listener for modal
                     item.querySelector('.manage-user-btn').onclick = () => {
-                        createUserModal({ userid, dateStr, report }, () => {
-                            // Ban user logic here
-                            // You can call a function to ban the user in Firestore
-                            // Example: banUser(userid)
-                            alert(`User ${userid} banned!`);
+                        createUserModal({ userid, dateStr, report }, async () => {
+                            try {
+                                await banUser(userid);
+                                alert(`User ${userid} has been banned.`);
+                            } catch (e) {
+                                alert('Failed to ban user.');
+                            }
                         });
                     };
                     flaggedContentList.appendChild(item);

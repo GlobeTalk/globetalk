@@ -1,5 +1,5 @@
-import { db } from './firebase-temp.js';
-import { doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { db } from './firebase.js';
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 
 // Create or update user profile
 export async function saveUserProfile(userId, profileData) {

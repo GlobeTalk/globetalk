@@ -1,5 +1,5 @@
-import { db } from './firebase-temp.js';
-import { collection, getDocs, getDoc, query, where, doc, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { db } from './firebase.js';
+import { collection, getDocs, getDoc, query, where, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 // Get total number of banned users
 export async function getBannedUserCount() {

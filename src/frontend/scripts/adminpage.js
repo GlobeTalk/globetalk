@@ -1,8 +1,8 @@
 import { getActiveUserCount, getFlaggedUserCount, getBannedUserCount, getFlaggedUsers, banUser } from '../../services/admin.js';
 
 // Import auth functions
-import { auth } from '../../services/firebase-temp.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { auth } from '../../services/firebase.js';
+import { onAuthStateChanged } from "firebase/auth";
 
 
 export async function getAdminCounts() {

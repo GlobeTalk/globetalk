@@ -1,20 +1,28 @@
 import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
-import fs from "fs";
 
-// Load service account
-const serviceAccount = JSON.parse(fs.readFileSync("./serviceAccountKey.json", "utf8"));
+// ---------------------
+// Initialize Firebase Admin using environment variable
+// ---------------------
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+  console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable");
+  process.exit(1);
+}
 
-// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
 
+// ---------------------
+// Express app setup
+// ---------------------
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000; // Render assigns port automatically
 
 app.use(cors());
 app.use(express.json());
@@ -52,7 +60,7 @@ app.post("/block", async (req, res) => {
   try {
     await db.collection("users").doc(uid).set({
       blocked: admin.firestore.FieldValue.arrayUnion(targetUid)
-    }, { merge: true }); // merge ensures existing fields are preserved
+    }, { merge: true });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -111,5 +119,5 @@ app.get("/listBlocked/:uid", async (req, res) => {
 // Start server
 // ---------------------
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Moderation API running on port ${PORT}`);
 });

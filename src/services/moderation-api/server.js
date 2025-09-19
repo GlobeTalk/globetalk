@@ -28,6 +28,13 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------
+// Root endpoint for browser testing
+// ---------------------
+app.get("/", (req, res) => {
+  res.send("Moderation API is running!");
+});
+
+// ---------------------
 // /report endpoint
 // ---------------------
 app.post("/report", async (req, res) => {

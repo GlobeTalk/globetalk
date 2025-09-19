@@ -43,3 +43,15 @@ export async function updateUserProfile(userId, updates) {
     return false;
   }
 }
+
+// Check if user exists
+export async function userExists(userId) {
+  try {
+    const docRef = doc(db, "users", userId);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists();
+  } catch (error) {
+    console.error("Error checking user existence: ", error);
+    return false;
+  }
+}

@@ -64,12 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           // Dynamically import admin service
           const adminModule = await import('../../services/admin.js');
+          const profileModule = await import('../../services/profile.js');
+
+
           const isBanned = await adminModule.isBannedUser(user.uid);
-          if (isBanned) {
+          if (!isBanned || isBanned === null) {
             statusMessage.textContent = 'You cannot login because your account has been banned.';
             statusMessage.className = 'status error';
             resetLoginButton();
             await logout();
+            return;
+          }
+
+          const exists = await profileModule.userExists(user.uid);
+          if (exists) {
+            statusMessage.textContent = 'Welcome back! Redirecting to your dashboard...';
+            statusMessage.className = 'status success';
+            setTimeout(() => {
+              window.location.href = '../pages/userdashboard.html';
+            }, 1500);
             return;
           }
         } catch (banErr) {
@@ -82,13 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Check if user is admin
         try {
-          const adminModule = await import('../../services/admin.js');
           const isAdmin = await adminModule.isAdmin(user.uid);
           if (isAdmin) {
             statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting to admin dashboard...`;
             statusMessage.className = 'status success';
             setTimeout(() => {
-              window.location.href = '../pages/admin.html';
+              window.location.href = '../../pages/admin.html';
             }, 1500);
             return;
           }
@@ -98,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.textContent = `Welcome, ${user.displayName}! Redirecting...`;
         statusMessage.className = 'status success';
         setTimeout(() => {
-          //window.location.href = '../pages/onboarding.html';
+          window.location.href = '../pages/onboarding.html';
         }, 1500);
       } else {
         statusMessage.textContent = 'Login failed. Please try again.';

@@ -45,8 +45,8 @@
     </div>
     <script type="module">
         import { getActiveConversations, getUsername } from '../src/services/userdashboard.js';
-        import { auth } from '../src/services/firebase-temp.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { auth } from '../src/services/firebase.js';
+        import { onAuthStateChanged } from "firebase/auth";
 
         function formatTimeAgo(date) {
             const now = new Date();

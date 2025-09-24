@@ -1,3 +1,4 @@
+// src/services/firebase.js
 import { 
   getAuth,
   GoogleAuthProvider,
@@ -19,10 +20,11 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 export {
   auth,
-  GoogleAuthProvider,
+  googleProvider,
   signInWithPopup,
   signOut,
   onAuthStateChanged

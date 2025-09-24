@@ -2,56 +2,97 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import userEvent from "@testing-library/user-event";
-import { fireEvent, screen } from "@testing-library/dom";
+import { fireEvent, getByRole, getByLabelText } from "@testing-library/dom";
 
-// Mock Firebase auth methods
-jest.mock("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js", () => {
+// Mock Firebase module
+// Mock Firebase module
+jest.mock("../../src/services/firebase.js", () => {
+  class MockGoogleProvider {}   // <- class for constructor
   return {
-    GoogleAuthProvider: jest.fn().mockImplementation(() => ({
-      addScope: jest.fn()
-    })),
-    signInWithPopup: jest.fn(() => Promise.resolve({ user: { uid: "123", email: "test@example.com" } })),
-    getAuth: jest.fn(() => ({})),
-    signOut: jest.fn(() => Promise.resolve()),
-    onAuthStateChanged: jest.fn((auth, cb) => cb(null)) // simulate signed-out state
+    getAuth: jest.fn(() => ({})), // dummy auth object
+    GoogleAuthProvider: MockGoogleProvider,
+    signInWithPopup: jest.fn().mockResolvedValue({
+      user: { uid: "123", email: "test@example.com" },
+    }),
   };
 });
 
-// Import the script AFTER mocks
-import "./src/frontend/scripts/login.js";
+// Import the real login module
+import { initLogin } from "../../src/frontend/scripts/login.js";
+import { signInWithPopup, GoogleAuthProvider } from "../../src/services/firebase.js";
 
-describe("Login Page", () => {
+describe("Login page Firebase login tests", () => {
+  let container;
+
   beforeEach(() => {
     // Set up DOM
     document.body.innerHTML = `
-      <button id="loginBtn">Sign in with Google</button>
-      <div id="statusMessage" class="status"></div>
+      <main class="login-wrapper">
+        <section class="section-card login-left">
+          <div class="consent-boxes">
+            <label>
+              <input type="checkbox" id="privacy">
+              I accept the Privacy Policy
+            </label>
+            <label>
+              <input type="checkbox" id="consent">
+              I consent to data processing as described in the Terms
+            </label>
+          </div>
+        </section>
+        <section class="section-card login-right">
+          <div id="statusMessage" class="status"></div>
+          <button id="loginBtn">Continue with Google</button>
+        </section>
+      </main>
     `;
+    container = document.body;
+
+    // Initialize login (attaches event listeners)
+    initLogin();
   });
 
-  test("shows success message after successful login", async () => {
-    const loginBtn = screen.getByText(/Sign in with Google/i);
+  test("clicking login with only one checkbox checked highlights the unchecked box", () => {
+  const loginBtn = getByRole(container, "button", { name: /continue with google/i });
+  const privacy = getByLabelText(container, /privacy policy/i);
+  const consent = getByLabelText(container, /consent/i);
 
-    // Click button
-    await userEvent.click(loginBtn);
+  // Spy on alert
+  const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
 
-    // Wait for message
-    const message = await screen.findByText(/Login successful/i);
-    expect(message).toBeInTheDocument();
-    expect(message).toHaveClass("success");
-  });
+  // Check only the privacy box
+  fireEvent.click(privacy);
 
-  test("handles popup closed error", async () => {
-    // Override mock for this test
-    const { signInWithPopup } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
-    signInWithPopup.mockRejectedValueOnce({ code: "auth/popup-closed-by-user" });
+  fireEvent.click(loginBtn);
 
-    const loginBtn = screen.getByText(/Sign in with Google/i);
-    await userEvent.click(loginBtn);
+  // Alert should appear
+  expect(alertMock).toHaveBeenCalledWith(expect.stringMatching(/accept/i));
 
-    const message = await screen.findByText(/popup was closed/i);
-    expect(message).toBeInTheDocument();
-    expect(message).toHaveClass("error");
+  // Outline: checked box not red, unchecked box red
+  expect(privacy.parentElement).not.toHaveStyle("outline: 2px solid red");
+  expect(consent.parentElement).toHaveStyle("outline: 2px solid red");
+
+  alertMock.mockRestore();
+});
+
+
+  test("clicking login with both boxes checked registers user in Firebase", async () => {
+    const loginBtn = getByRole(container, "button", { name: /continue with google/i });
+    const privacy = getByLabelText(container, /privacy policy/i);
+    const consent = getByLabelText(container, /consent/i);
+    const statusDiv = container.querySelector("#statusMessage");
+
+    // Check boxes
+    fireEvent.click(privacy);
+    fireEvent.click(consent);
+
+    // Click login
+    await fireEvent.click(loginBtn);
+
+    // signInWithPopup should be called
+    expect(signInWithPopup).toHaveBeenCalledWith(expect.any(Object), expect.any(GoogleAuthProvider));
+
+    // Status message updated
+    expect(statusDiv).toHaveTextContent(/logged in as test@example.com/i);
   });
 });

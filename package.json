@@ -1,13 +1,15 @@
 {
   "name": "globetalk",
   "version": "1.0.0",
-  "description": "A virtual pen pal platform connecting people worldwide through text, audio, and video messages.",
+  "description": "A virtual pen pal platform connecting people worldwide through text-based communication.",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "npx http-server src/frontend -o index.html",
     "test": "jest --coverage",
-    "lint": "eslint src tests"
+    "lint": "eslint src tests pages",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "repository": {
     "type": "git",

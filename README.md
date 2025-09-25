@@ -49,7 +49,7 @@ GlobeTalk is an online platform that connects people from different countries to
 - Javascript(Vanilla)  
 
 **Backend:**
-- Firebase(Firestore)
+- Clerk
 - Firebase Auth  
 - Firebase Functions
 

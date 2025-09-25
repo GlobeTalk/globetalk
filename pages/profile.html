@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobeTalk - Profile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&family=Inter:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../src/frontend/styles/profile.css">
+</head>
+<body>
+    <!-- GlobeTalk Logo -->
+     <header></header>
+         <div class="logo">
+             GlobeTalk
+         </div>
+        <nav>
+            <a class="Home" href="userdashboard.html">Home</a>
+            <a class="About" href="about.html">About</a>
+            <a class="FindPenPal" href="findPal.html">Find Pen Pal</a>
+            <a class="Settings" href="settings.html">Settings & Safety</a>
+        </nav>
+     </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Profile Title -->
+        <h2 class="profile-title">
+            Profile
+        </h2>
+
+        <!-- Main Profile Card -->
+        <div class="profile-card">
+            <!-- User Info Section -->
+            <div class="user-info">
+                <div class="user-header">
+                    <div class="profile-pic" id="profilePic">
+                        <!-- Avatar will be loaded here -->
+                    </div>
+                    <h3 class="username" id="username">
+                        <!-- Username will be loaded here -->
+                    </h3>
+                </div>
+                <p class="user-description" id="userDescription">
+                    <!-- Description will be loaded here -->
+                </p>
+            </div>
+
+            <!-- Personal Details Grid -->
+            <div class="personal-details">
+                <div class="detail-item" id="ageDetail">
+                    <!-- Age will be loaded here -->
+                </div>
+                <div class="detail-item" id="genderDetail">
+                    <!-- Gender will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Hobbies Section -->
+            <div class="hobbies-section">
+                <h4 class="hobbies-title">
+                    Hobbies and Interests:
+                </h4>
+                <div class="hobbies-list" id="hobbiesList">
+                    <!-- Hobbies will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Location and Languages -->
+            <div class="location-languages">
+                <div class="location-item" id="regionDetail">
+                    <!-- Region and Timezone will be loaded here -->
+                </div>
+                <div class="location-item" id="languagesDetail">
+                    <!-- Languages will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="start-chat-btn">
+                    Start a Chat
+                </button>
+
+                <div class="learn-more-link">
+                    <a href="dashboard.html" style="text-decoration: none;">
+                        <span class="learn-more-purple">Learn more</span>
+                    </a>
+                    <span class="learn-more-black"> about my country</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+            Remember. Never share personal information
+        </div>
+    </div>
+
+    <script type="module" src="../src/frontend/scripts/profilepage.js"></script>
+
+</body>
+</html>

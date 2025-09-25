@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobeTalk - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../src/frontend/styles/userdashboard.css">
+</head>
+<body>
+    <div class="min-h-screen bg-globe-blue">
+        <!-- Navigation -->
+        <nav>
+            <a href="userdashboard.html" class="nav-link">Home</a>
+            <a href="findPal.html" class="nav-link">Find Pen Pal</a>
+            <a href="settings.html" class="nav-link">Settings & Safety</a>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- GlobeTalk branding -->
+            <h1 class="globetalk-title">GlobeTalk</h1>
+
+            <!-- Dashboard Title -->
+            <div class="dashboard-title-container">
+                <h2 class="dashboard-title">Dashboard</h2>
+            </div>
+
+            <!-- Pen Pal Suggestions Section -->
+            <div class="section">
+                <h3 class="section-title">Pen Pal Suggestions</h3>
+                <div class="cards-container" id="penPalCards">
+                    <!-- Pen pal cards will be rendered here by JS -->
+                </div>
+            </div>
+
+            <!-- Active Conversations Section -->
+            <div class="section">
+                <h3 class="section-title">Active Conversations</h3>
+                <div class="conversations-container" id="conversationsContainer">
+                    <!-- Active conversations will be rendered here by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import { getActiveConversations, getUsername } from '../src/services/userdashboard.js';
+        import { auth } from '../src/services/firebase.js';
+        import { onAuthStateChanged } from "firebase/auth";
+
+        function formatTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSec = Math.floor(diffMs / 1000);
+            if (diffSec < 60) return `${diffSec}s`;
+            const diffMin = Math.floor(diffSec / 60);
+            if (diffMin < 60) return `${diffMin}m`;
+            const diffHr = Math.floor(diffMin / 60);
+            if (diffHr < 24) return `${diffHr}h`;
+            const diffDay = Math.floor(diffHr / 24);
+            return `${diffDay} day${diffDay > 1 ? 's' : ''}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) return;
+                const userId = user.uid;
+
+                // Render pen pal suggestions
+                const penPalCards = document.getElementById('penPalCards');
+                if (penPalCards) {
+                    penPalCards.innerHTML = '<span>Loading...</span>';
+                    try {
+                        const suggestions = await import('../src/services/userdashboard.js').then(mod => mod.getPenPalSuggestions(userId));
+                        penPalCards.innerHTML = '';
+                        if (suggestions.length === 0) {
+                            penPalCards.innerHTML = '<span>No pen pal suggestions found.</span>';
+                        } else {
+                            suggestions.forEach(user => {
+                                const card = document.createElement('div');
+                                card.className = 'pen-pal-card';
+                                card.style.cursor = 'pointer';
+                                card.innerHTML = `
+                                    <h4>${user.username || 'Unknown'}</h4>
+                                    <div class="pen-pal-info">
+                                        <p><strong>Region:</strong> ${user.region || 'N/A'}</p>
+                                        <p><strong>Hobbies:</strong> ${(user.hobbies && user.hobbies.length) ? user.hobbies.join(', ') : 'N/A'}</p>
+                                        <p><strong>Languages:</strong> ${(user.languages && user.languages.length) ? user.languages.join(', ') : 'N/A'}</p>
+                                    </div>
+                                `;
+                                card.onclick = () => {
+                                    // Redirect to profile.html with Firestore document id
+                                    console.log(encodeURIComponent(user._docId));
+                                    window.location.href = `../pages/profile.html?userId=${encodeURIComponent(user._docId)}`;
+                                };
+                                penPalCards.appendChild(card);
+                            });
+                        }
+                    } catch (e) {
+                        penPalCards.innerHTML = '<span>Error loading pen pal suggestions.</span>';
+                    }
+                }
+
+                // Render active conversations
+                const container = document.getElementById('conversationsContainer');
+                if (container) {
+                    container.innerHTML = '<span>Loading...</span>';
+                    try {
+                        const username = await getUsername(userId);
+                        const conversations = await getActiveConversations(username);
+                        container.innerHTML = '';
+                        if (conversations.length === 0) {
+                            container.innerHTML = '<span>No active conversations.</span>';
+                        } else {
+                            conversations.forEach(conv => {
+                                const item = document.createElement('div');
+                                item.className = 'conversation-item';
+                                item.innerHTML = `
+                                    <h4>${conv.otherUser}</h4>
+                                    <span class="conversation-time">${formatTimeAgo(conv.lastUpdated)}</span>
+                                `;
+                                container.appendChild(item);
+                            });
+                        }
+                    } catch (e) {
+                        console.log(e);
+                        container.innerHTML = '<span>Error loading conversations.</span>';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
-import { db } from './firebase.js';
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+
+import admin from './FirebaseAdmin.js';
+
+const db = admin.firestore();
 
 // Create or update user profile
 export async function saveUserProfile(userId, profileData) {

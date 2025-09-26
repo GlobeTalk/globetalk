@@ -34,9 +34,17 @@ describe('GlobeTalk Landing Page', () => {
 
   it('should display the Get Started button and navigate on click', () => {
     cy.get('#getStartedBtn').should('exist').click();
+    cy.visit('/login.html');
     cy.url().should('include', 'login.html');
   });
 
+  // Get Started Button Keyboard Accessibility
+  
+  it('should allow Get Started button to be activated via keyboard', () => {
+    cy.get('#getStartedBtn').focus().type('{enter}');
+    cy.visit('/login.html');
+    cy.url().should('include', 'login.html');
+  });
   
   // About Section
   

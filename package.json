@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/GlobeTalk/globetalk#readme",
   "dependencies": {
-    "firebase": "^11.10.0"
+    "firebase": "^11.10.0",
+    "firebase-admin": "^13.5.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",

@@ -1,43 +1,84 @@
-// login.js
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "../../services/firebase.js";
+import { signInWithGoogle, observeUser } from "../services/auth/authService.js";
 
-export function initLogin() {
+// ✅ Firestore/Backend user check (replace API URL or Firestore logic)
+async function checkIfUserExists(userId) {
+  try {
+    const response = await fetch(`/api/users/${userId}/exists`, {
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("idToken")}`
+      }
+    });
+    const data = await response.json();
+    return data.exists; // expected response: { exists: true/false }
+  } catch (err) {
+    console.error("Error checking user existence:", err);
+    return false;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
   const loginBtn = document.getElementById("loginBtn");
   const privacyCheckbox = document.getElementById("privacy");
   const consentCheckbox = document.getElementById("consent");
-  const statusDiv = document.getElementById("statusMessage");
 
-  const auth = getAuth();
-  const provider = new GoogleAuthProvider();
+  // ✅ Enable/disable login button
+  function updateButtonState() {
+    const returningUser = localStorage.getItem("policiesAccepted") === "true";
+    loginBtn.disabled = !(
+      returningUser || (privacyCheckbox.checked && consentCheckbox.checked)
+    );
+  }
+  updateButtonState();
 
-  loginBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
+  privacyCheckbox.addEventListener("change", updateButtonState);
+  consentCheckbox.addEventListener("change", updateButtonState);
 
-    const boxes = [privacyCheckbox, consentCheckbox];
-    const allChecked = boxes.every(box => box.checked);
-
-    boxes.forEach(box => box.parentElement.style.outline = "none");
-
-    if (!allChecked) {
-      alert("Please accept the Privacy Policy and give your consent before continuing.");
-      boxes.forEach(box => {
-        if (!box.checked) box.parentElement.style.outline = "2px solid red";
-      });
-      return;
-    }
-
+  // ✅ Google Login Flow
+  loginBtn.addEventListener("click", async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      statusDiv.textContent = `Logged in as ${user.email}`;
+      const policiesAccepted = privacyCheckbox.checked && consentCheckbox.checked;
+      if (!localStorage.getItem("policiesAccepted") && !policiesAccepted) {
+        alert("Please accept both privacy policy and consent terms.");
+        return;
+      }
+
+      // Firebase sign-in
+      const { user, idToken } = await signInWithGoogle();
+      console.log("✅ User signed in:", user.displayName);
+
+      localStorage.setItem("idToken", idToken);
+      localStorage.setItem("policiesAccepted", "true");
+
+      const isExistingUser = await checkIfUserExists(user.uid);
+      window.location.href = isExistingUser ? "/dashboard.html" : "/onboarding.html";
+
     } catch (err) {
-      console.error("Login failed:", err);
-      statusDiv.textContent = "Login failed. Please try again.";
+      console.error("❌ Login failed:", err);
+      alert("Login failed. Please try again.");
     }
   });
-}
 
-// Run automatically in browser
-if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", initLogin);
-}
+  // ✅ Keyboard accessibility
+  loginBtn.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && !loginBtn.disabled) {
+      e.preventDefault();
+      loginBtn.click();
+    }
+  });
+
+  // ✅ Observe login state changes
+  observeUser((user) => {
+    if (user) {
+      console.log("👤 Logged in as:", user.email);
+      checkIfUserExists(user.uid).then((exists) => {
+        if (exists) {
+          window.location.href = "/dashboard.html";
+        } else if (localStorage.getItem("policiesAccepted") === "true") {
+          window.location.href = "/onboarding.html";
+        }
+      });
+    } else {
+      console.log("🚪 Not logged in");
+    }
+  });
+});

@@ -1,25 +1,54 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { app } from "../firebase.js"; // your initialized firebase app
+// src/services/auth/authService.js
+import {
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth } from "./firebase.js";
+import { googleProvider, githubProvider, facebookProvider } from "./providerConfig.js";
 
+/**
+ * Sign in with Google
+ */
 export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth, googleProvider);
   const user = result.user;
+  const idToken = await user.getIdToken();
+  return { user, idToken };
+}
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+/**
+ * Sign in with GitHub
+ */
+export async function signInWithGitHub() {
+  const result = await signInWithPopup(auth, githubProvider);
+  const user = result.user;
+  const idToken = await user.getIdToken();
+  return { user, idToken };
+}
 
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      acceptedPolicy: false,
-      createdAt: serverTimestamp(),
-    });
-  }
+/**
+ * Sign in with Facebook (if enabled)
+ */
+export async function signInWithFacebook() {
+  const result = await signInWithPopup(auth, facebookProvider);
+  const user = result.user;
+  const idToken = await user.getIdToken();
+  return { user, idToken };
+}
 
-  return user;
+/**
+ * Sign out the current user
+ */
+export async function logOut() {
+  await signOut(auth);
+}
+
+/**
+ * Observe user state changes
+ * @param {function} callback Receives user or null
+ */
+export function observeUser(callback) {
+  onAuthStateChanged(auth, callback);
 }

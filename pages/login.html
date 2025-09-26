@@ -4,14 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GlobeTalk – Login</title>
-
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-
     body {
       font-family: "Poppins", sans-serif;
       background: linear-gradient(to right, #1976d2, #32dde3, #1976d2);
@@ -21,14 +20,12 @@
       align-items: center;
       padding: 40px;
     }
-
     .login-wrapper {
       display: flex;
       gap: 30px;
       width: 90%;
       max-width: 1200px;
     }
-
     .section-card {
       background: #4cdfff;
       border-radius: 16px;
@@ -37,8 +34,6 @@
       flex: 1;
       min-width: 300px;
     }
-
-    /* Left side */
     .logo {
       font-size: 2.2rem;
       font-weight: 700;
@@ -46,7 +41,6 @@
       margin-bottom: 25px;
       text-align: center;
     }
-
     .illustrations {
       display: flex;
       justify-content: center;
@@ -54,29 +48,22 @@
       gap: 15px;
       margin-bottom: 25px;
     }
-
     .illustrations img { max-height: 160px; }
     .illustrations .globe { max-height: 90px; }
-
     .welcome {
       text-align: center;
       margin-bottom: 20px;
     }
-
     .welcome h2 {
       font-size: 1.8rem;
       color: #000;
     }
-
     .welcome span { font-weight: 700; }
-
     .subtitle {
       font-size: 1rem;
       color: #222;
       margin-top: 8px;
     }
-
-    /* Checkbox area */
     .consent-boxes {
       margin-top: 25px;
       display: flex;
@@ -84,28 +71,27 @@
       gap: 12px;
       font-size: 0.95rem;
     }
-
     .consent-boxes label {
       display: flex;
       align-items: center;
       gap: 10px;
       cursor: pointer;
     }
-
     input[type="checkbox"] {
       width: 18px;
       height: 18px;
-      accent-color: #1976d2; /* modern browsers */
+      accent-color: #1976d2;
       cursor: pointer;
     }
-
-    /* Right side */
+    input[type="checkbox"]:focus {
+      outline: 2px solid #1976d2;
+      outline-offset: 2px;
+    }
     .login-right {
       display: flex;
       justify-content: center;
       align-items: center;
     }
-
     .google-btn {
       display: flex;
       align-items: center;
@@ -119,15 +105,28 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       transition: transform 0.2s;
     }
-
+    .google-btn:focus {
+      outline: 2px solid #1976d2;
+      outline-offset: 2px;
+    }
     .google-btn img {
       width: 22px;
       height: 22px;
       margin-right: 10px;
     }
-
-    .google-btn:hover { transform: scale(1.05); }
-
+    .google-btn:hover {
+      transform: scale(1.05);
+    }
+    #statusMessage {
+      margin-top: 15px;
+      font-size: 1rem;
+      color: green;
+      min-height: 24px;
+      display: none;
+    }
+    #statusMessage.visible {
+      display: block;
+    }
     @media (max-width: 768px) {
       .login-wrapper {
         flex-direction: column;
@@ -137,46 +136,37 @@
   </style>
 </head>
 <body>
-
   <main class="login-wrapper">
-    <!-- Left Panel -->
     <section class="section-card login-left">
       <h1 class="logo">🌍 GlobeTalk</h1>
-
       <div class="illustrations">
         <img src="images/user1.png" alt="female user">
         <img src="images/globe.webp" class="globe" alt="globe">
         <img src="images/user2.png" alt="male user">
       </div>
-
-      <header class="welcome">
+      <div class="welcome">
         <h2>Hello, <span>Welcome!</span></h2>
         <p class="subtitle">Talk Beyond Borders. Your world is one conversation away.</p>
-      </header>
-
-      
+      </div>
       <div class="consent-boxes">
-        <label>
+        <label for="privacy">
           <input type="checkbox" id="privacy">
-          I accept the <a href="#">Privacy Policy</a>.
+          I accept the <a href="privacy.html" target="_blank">Privacy Policy</a>.
         </label>
-        <label>
+        <label for="consent">
           <input type="checkbox" id="consent">
-          I consent to data processing as described in the Terms.
+          I consent to data processing as described in the <a href="terms.html" target="_blank">Terms</a>.
         </label>
       </div>
     </section>
-
-    <!-- Right Panel -->
     <section class="section-card login-right">
-      <button id="loginBtn" class="google-btn">
+      <button id="loginBtn" class="google-btn" aria-label="Continue with Google">
         <img src="images/google-icon.png" alt="Google logo">
         Continue with Google
       </button>
-      <div id="statusMessage" class="status"></div>
+      <div id="statusMessage" class="statusMessage"></div>
     </section>
   </main>
-
   <script type="module" src="../src/frontend/scripts/login.js"></script>
 </body>
 </html>

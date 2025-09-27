@@ -1,5 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 import express from "express";
-import profileRoutes from "./src/routes/profileRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 const app = express();
 app.use(express.json()); // parse JSON bodies

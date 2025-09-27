@@ -1,6 +1,6 @@
 import express from "express";
-import { saveUserProfile, getUserProfile, updateUserProfile } from "../services/profile.js";
-import admin from "../services/FirebaseAdmin.js";
+import { saveUserProfile, getUserProfile, updateUserProfile } from "../../profile.js";
+import admin from "../../FirebaseAdmin.js";
 
 const router = express.Router();
 

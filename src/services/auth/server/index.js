@@ -1,26 +1,35 @@
-import express from "express";
-import cors from "cors";
+//first ensure  you import dotenv at the very top because it needs to load env variables before anything else
 import dotenv from "dotenv";
-import { initFirebaseAdmin } from "../firebaseAdmin.js";
-import userRoutes from "./routes/users.js";
-
 dotenv.config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// import express and other necessary modules
+import express from "express";
+import cors from "cors";  
+import { initFirebaseAdmin } from "../firebaseAdmin.js"; 
+import userRouter from "./routes/users.js"; 
 
-// ✅ Initialize Firebase Admin SDK
+
+
+//console.log("Has service account?", !!process.env.FIREBASE_SERVICE_ACCOUNT);
+
+
+// Initialize Firebase Admin
 initFirebaseAdmin();
 
-// Simple health check
-app.get("/", (req, res) => {
-  res.send("Globetalk Auth API is live ✅");
+const app = express();
+app.use(cors()); // enable CORS for all routes
+app.use(express.json());
+
+//Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "Auth Api is live" });
 });
 
-// API routes
-app.use("/api/users", userRoutes);
+// Mount routes
+app.use("/api/users", userRouter);
 
 // Start server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`🚀 Auth API running on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

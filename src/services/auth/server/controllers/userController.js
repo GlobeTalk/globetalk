@@ -9,7 +9,7 @@
 // and handle errors appropriately
 // finally we export the functions for use in our routes
 // this file only handles Firestore user data ensuring separation of concerns from auth logic
-import { admin } from "../../firebaseAdmin.js";
+import { admin } from "../../../firebaseAdmin.js";
 
 function getFirestore() {
   return admin.firestore();

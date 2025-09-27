@@ -5,7 +5,9 @@ dotenv.config();
 // import express and other necessary modules
 import express from "express";
 import cors from "cors";  
-import { initFirebaseAdmin } from "../firebaseAdmin.js"; 
+import { initFirebaseAdmin } from "../../../firebaseAdmin.js"; 
+// Initialize Firebase Admin
+initFirebaseAdmin();
 import userRouter from "./routes/users.js"; 
 
 
@@ -13,8 +15,7 @@ import userRouter from "./routes/users.js";
 //console.log("Has service account?", !!process.env.FIREBASE_SERVICE_ACCOUNT);
 
 
-// Initialize Firebase Admin
-initFirebaseAdmin();
+
 
 const app = express();
 app.use(cors()); // enable CORS for all routes

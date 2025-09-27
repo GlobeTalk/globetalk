@@ -1,4 +1,4 @@
-import {admin} from "../../../firebaseAdmin.js";
+import { admin } from "../../../firebaseAdmin.js";
 
 /**
  * Middleware to verify Firebase ID token.

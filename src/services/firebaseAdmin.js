@@ -1,6 +1,18 @@
+// from the root, path to this file is src/services/FirebaseAdmin.js
 //import firebaseAdmin from "firebase-admin";
 import admin from "firebase-admin";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+//dotenv.config({ path: path.resolve('../../.env') }); // adjust relative path
 
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const envPath = path.resolve(__dirname, "../../.env");
+console.log("Attempting to load .env from:", envPath);
+dotenv.config({ path: envPath });
 
 // Initialize Firebase Admin SDK
 export function initFirebaseAdmin() {
@@ -18,7 +30,7 @@ export function initFirebaseAdmin() {
 }
 
 // export the initialized admin instance
-export { admin };
+export default admin;
 
 // This file sets up and exports the Firebase Admin SDK for server-side use.
 // It reads the service account credentials from environment variables for security.

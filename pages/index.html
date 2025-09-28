@@ -218,6 +218,79 @@
     line-height: 1.4;
   }
 
+  /* How It Works Section */
+ /* .how-it-works {
+  background: #f5f7fa;
+  padding: 80px 20px;
+  font-family: 'Segoe UI', sans-serif;
+}*/
+
+.section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1a1a1a;
+  margin-bottom: 50px;
+  position: relative;
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: #4f46e5; /* accent color */
+  margin: 15px auto 0;
+  border-radius: 2px;
+}
+
+.steps-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  justify-content: center;
+}
+
+.step-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 30px 25px;
+  flex: 1 1 280px;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.step-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.step-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #4f46e5; /* accent color */
+  width: 60px;
+  height: 60px;
+  line-height: 60px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: #e0e7ff; /* light accent background */
+}
+
+.step-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  color: #111827;
+}
+
+.step-card p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+
   /* Footer */
   .footer {
   background-color: rgba(123, 167, 202, 0.8);
@@ -308,7 +381,7 @@
 <section class="about section-card" id="about">
   <div class="about-container">
     <div class="about-text">
-      <h2>About GlobeTalk</h2>
+      <h2 class="section-title">About GlobeTalk</h2>
       <p>GlobeTalk is a platform that connects people from different countries through pen pal letters, helping users learn about other cultures, make lifelong friends, and share experiences globally.</p>
       <p>Our mission is to foster meaningful connections and cultural exchange in a safe, friendly, and easy-to-use environment.</p>
     </div>
@@ -319,6 +392,7 @@
 </section>
 
 <section class="features-section section-card" id="features">
+  <h2 class="section-title">Features</h2>
   <div class="features-container">
     <div class="feature-card">
       <h3>Make Friends</h3>
@@ -336,22 +410,27 @@
 </section>
 
 <section class="how-it-works section-card" id="how-it-works">
-  <h2>How It Works</h2>
+  <h2 class="section-title">How It Works</h2>
   <div class="steps-container">
-    <div class="step">
-      <h3>1. Sign Up</h3>
-      <p>Create your free account in just a few clicks.</p>
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <h3>Sign Up</h3>
+      <p>Create your free account in just a few clicks and get ready to explore the world.</p>
     </div>
-    <div class="step">
-      <h3>2. Find a Pen Pal</h3>
-      <p>Browse profiles and get matched with people from around the world.</p>
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <h3>Find a Pen Pal</h3>
+      <p>Browse anonymous profiles and get matched with people from different countries.</p>
     </div>
-    <div class="step">
-      <h3>3. Start Exchanging Letters</h3>
-      <p>Write and receive virtual letters safely on GlobeTalk.</p>
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <h3>Start Exchanging Letters</h3>
+      <p>Write and receive virtual letters safely and thoughtfully on GlobeTalk.</p>
     </div>
   </div>
 </section>
+
+
 
 
 <footer class="footer" id="contacts">

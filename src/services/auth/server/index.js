@@ -1,35 +1,32 @@
-//first ensure  you import dotenv at the very top because it needs to load env variables before anything else
-import dotenv from "dotenv";
-dotenv.config();
-
-// import express and other necessary modules
 import express from "express";
-import cors from "cors";  
-import { initFirebaseAdmin } from "../../../firebaseAdmin.js"; 
-// Initialize Firebase Admin
-initFirebaseAdmin();
-import userRouter from "./routes/users.js"; 
+import cors from "cors";
+//import admin from "../../firebaseAdmin.js"; // Import initialized admin
+import userRouter from "./routes/users.js";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// Load .env file from project root
+const envPath = path.resolve(__dirname, "../../../.env");
+console.log("Attempting to load .env from:", envPath);
+dotenv.config({ path: envPath });
 
-//console.log("Has service account?", !!process.env.FIREBASE_SERVICE_ACCOUNT);
-
-
-
+console.log("FIREBASE_SERVICE_ACCOUNT:", !!process.env.FIREBASE_SERVICE_ACCOUNT);
 
 const app = express();
-app.use(cors()); // enable CORS for all routes
+app.use(cors());
 app.use(express.json());
 
-//Health check endpoint
 app.get("/health", (req, res) => {
-  res.json({ status: "Auth Api is live" });
+  res.json({ status: "Auth API is live" });
 });
 
-// Mount routes
 app.use("/api/users", userRouter);
 
-// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

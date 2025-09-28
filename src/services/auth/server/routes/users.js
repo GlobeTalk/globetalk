@@ -6,6 +6,7 @@
 // the routes are mounted under /api/users in the main server file
 // we handle errors and send appropriate HTTP responses
 // finally we export the router for use in the main server file
+// from the root, path to this file is src/services/auth/server/routes/users.js
 import express from "express";
 import { verifyToken } from "../middleware/verifyToken.js";
 import { userExists, createUser } from "../controllers/userController.js";

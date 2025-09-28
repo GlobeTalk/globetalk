@@ -1,12 +1,15 @@
 import admin from "firebase-admin";
-import { readFileSync } from "fs";
 
 if (!admin.apps.length) {
-  // Load service account key JSON (keep it secret!)
+  // Load service account from env variable (JSON string)
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    : undefined;
+  if (!serviceAccount) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT env variable not set");
+  }
   admin.initializeApp({
-    credential: admin.credential.cert(
-      JSON.parse(readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"))
-    ),
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 

@@ -2,18 +2,20 @@
 import admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK
+let initialized = false;
 export function initFirebaseAdmin() {
-  if (!admin.apps.length) {
-    // Ensure the service account JSON is available in environment variables
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set");
+  if (!initialized && admin.apps.length === 0) {
+    // Load service account from env
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+      : undefined;
+    if (!serviceAccount) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT env variable not set");
     }
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("Firebase Admin initialized");
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    initialized = true;
   }
+  return admin;
 }
 
 // export the initialized admin instance

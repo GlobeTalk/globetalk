@@ -1,6 +1,8 @@
 //first ensure  you import dotenv at the very top because it needs to load env variables before anything else
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); //please update the path as necessary
+console.log("FIREBASE_SERVICE_ACCOUNT loaded?", !!process.env.FIREBASE_SERVICE_ACCOUNT);
+
 
 // import express and other necessary modules
 import express from "express";

@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", languageList);
 
 
 
-
+/*
 // ------------------ FIREBASE SETUP ------------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -199,7 +199,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
+*/
 // ------------------ REGION DATA ------------------
 const regions = [
   "Africa (Central)", "Africa (Eastern)", "Africa (Southern)", "Africa (Western)",
@@ -292,7 +292,7 @@ async function languageList() {
     dropdown.innerHTML = '<option value="">Error loading languages</option>';
   }
 }
-
+/*
 // ------------------ SAVE PROFILE TO FIRESTORE ------------------
 async function saveUserProfile(userId, data) {
   try {
@@ -303,7 +303,7 @@ async function saveUserProfile(userId, data) {
     return false;
   }
 }
-
+*/
 // ------------------ MAIN APP ------------------
 document.addEventListener('DOMContentLoaded', function() {
   populateRegionOptions();
@@ -351,10 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
           ageRange: document.getElementById('ageRange').value,
           region: document.getElementById('region').value,
           languages: document.getElementById('languages').value.split(',').map(lang => lang.trim()),
+          gender: document.getElementById('gender').value,
           hobbies: document.getElementById('hobbies').value.split(',').map(hobby => hobby.trim()),
-          threeWords: document.getElementById('threeWords').value,
+          bio: document.getElementById('bio').value,
           createdAt: new Date(),
-          groupCode: "groupBKPTN9" // ✅ secret code added
+          secret: "groupBKPTN9" // ✅ secret code added
         };
 
         const success = await saveUserProfile(userId, formData);

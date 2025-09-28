@@ -1,4 +1,4 @@
-import { signInWithGoogle, observeUser } from "../services/auth/authService.js";
+import { signInWithGoogle, observeUser } from "../../services/firebase.js";
 
 // ✅ Firestore/Backend user check (replace API URL or Firestore logic)
 async function checkIfUserExists(userId) {
@@ -38,23 +38,33 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const policiesAccepted = privacyCheckbox.checked && consentCheckbox.checked;
       if (!localStorage.getItem("policiesAccepted") && !policiesAccepted) {
-        alert("Please accept both privacy policy and consent terms.");
+        console.log("Please accept both privacy policy and consent terms.");
         return;
       }
 
       // Firebase sign-in
-      const { user, idToken } = await signInWithGoogle();
-      console.log("✅ User signed in:", user.displayName);
+      const { user } = await signInWithGoogle();
+      // Always get a fresh token after sign-in
+      const idToken = await user.getIdToken(true);
+  console.log("✅ User signed in: " + user.displayName);
+  console.log("[Login] Got fresh ID token after sign-in: " + idToken);
 
       localStorage.setItem("idToken", idToken);
       localStorage.setItem("policiesAccepted", "true");
 
       const isExistingUser = await checkIfUserExists(user.uid);
-      window.location.href = isExistingUser ? "/dashboard.html" : "/onboarding.html";
+      console.log("[Login] User exists? " + isExistingUser);
+      if (isExistingUser) {
+        console.log("[Login] Redirecting to /dashboard.html");
+        window.location.href = "../../../pages/dashboard.html";
+      } else {
+        console.log("[Login] Redirecting to /onboarding.html");
+        window.location.href = "../../../pages/onboarding.html";
+      }
 
     } catch (err) {
       console.error("❌ Login failed:", err);
-      alert("Login failed. Please try again.");
+      console.log("Login failed. Please try again.");
     }
   });
 
@@ -67,18 +77,30 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ✅ Observe login state changes
-  observeUser((user) => {
+  observeUser(async (user) => {
+  console.log("[AuthState] onAuthStateChanged fired. User: " + (user ? user.email : "null"));
     if (user) {
-      console.log("👤 Logged in as:", user.email);
-      checkIfUserExists(user.uid).then((exists) => {
-        if (exists) {
-          window.location.href = "/dashboard.html";
-        } else if (localStorage.getItem("policiesAccepted") === "true") {
-          window.location.href = "/onboarding.html";
-        }
-      });
+      // Always get a fresh token before API calls
+      const idToken = await user.getIdToken(true);
+      console.log("[AuthState] Got fresh ID token: " + idToken);
+      localStorage.setItem("idToken", idToken);
+
+      console.log("👤 Logged in as: " + user.email);
+      const exists = await checkIfUserExists(user.uid);
+      console.log("[AuthState] User exists? " + exists);
+      if (exists) {
+        console.log("[AuthState] Redirecting to /dashboard.html");
+        window.location.href = "../../../pages/dashboard.html";
+      } else if (localStorage.getItem("policiesAccepted") === "true") {
+        console.log("[AuthState] Redirecting to /onboarding.html");
+        window.location.href = "../../../pages/onboarding.html";
+      }
     } else {
-      console.log("🚪 Not logged in");
+      console.log("🚪 Not logged in. Redirecting to login.html");
+      // Optionally redirect to login.html if not already there
+      if (!window.location.pathname.endsWith("login.html")) {
+        window.location.href = "../../../pages/login.html";
+      }
     }
   });
 });

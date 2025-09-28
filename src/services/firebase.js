@@ -22,6 +22,24 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
+
+export function observeUser(callback) {
+
+  return onAuthStateChanged(auth, callback);
+}
+
+
+export async function signInWithGoogle() {
+
+  const result = await signInWithPopup(auth, googleProvider);
+
+  const user = result.user;
+
+ 
+
+  return { user };
+}
+
 export {
   auth,
   googleProvider,

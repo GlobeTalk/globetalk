@@ -1,5 +1,4 @@
-
-        // Region data with timezone examples
+// Region data with timezone examples
         /*const regions = [
             "Africa (Central)",
             "Africa (Eastern)",
@@ -113,8 +112,7 @@
 
         // Import the functions  from the SDKs
 import { saveUserProfile } from './src/services/profile.js';
-import { auth } from './src/services/firebase.js';
-import { onAuthStateChanged } from "firebase/auth";
+import { auth, observeUser } from '../../services/firebase.js';
 
 // Wait for page to load
 document.addEventListener('DOMContentLoaded', function() {
@@ -170,18 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });*/
 
 
-
+import { observeUser } from "../../services/firebase.js";
 
 
 
 
 document.addEventListener("DOMContentLoaded", languageList);
-
-
-
-
-
-
 
 
 /*
@@ -305,6 +297,11 @@ async function saveUserProfile(userId, data) {
 }
 */
 // ------------------ MAIN APP ------------------
+
+
+
+
+
 document.addEventListener('DOMContentLoaded', function() {
   populateRegionOptions();
   detectUserRegion();
@@ -339,11 +336,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ------------------ AUTH CHECK + FORM SUBMIT ------------------
-  onAuthStateChanged(auth, (user) => {
+  observeUser(async (user) => {
     if (user) {
       const userId = user.uid;
-      console.log("User ID:", userId);
-
       document.getElementById('profileForm').addEventListener('submit', async function(event) {
         event.preventDefault();
 
@@ -355,18 +350,29 @@ document.addEventListener('DOMContentLoaded', function() {
           hobbies: document.getElementById('hobbies').value.split(',').map(hobby => hobby.trim()),
           bio: document.getElementById('bio').value,
           createdAt: new Date(),
-          secret: "groupBKPTN9" // ✅ secret code added
+          secret: "groupBKPTN9"
         };
 
-        const success = await saveUserProfile(userId, formData);
-        if (success) {
+        // Get fresh ID token
+        const idToken = await user.getIdToken(true);
+
+        // Send profile to backend API
+        const response = await fetch("/api/profile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
           alert("Profile created successfully 🎉");
-          window.location.href = "index.html";
+          window.location.href = "userdashboard.html";
         } else {
           alert("Error saving profile. Please try again.");
         }
       });
-
     } else {
       alert('You need to be logged in to create a profile.');
       window.location.href = 'login.html';

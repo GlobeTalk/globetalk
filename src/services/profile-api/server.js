@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
+dotenv.config({ path: "../../../.env" });
 import express from "express";
 import profileRoutes from "./routes/profileRoutes.js";
 
@@ -12,4 +12,4 @@ app.use("/api/profile", profileRoutes);
 //test route
 app.get("/", (req, res) => res.send("Server is running"));
 
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+app.listen(3001, () => console.log("Server running on http://localhost:3001"));

@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Click event listener
   joinButton.addEventListener('click', () => {
-    window.location.href = 'login.html';
+    window.location.href = './pages/login.html';
   });
 
   // Keyboard accessibility (Enter or Space key)

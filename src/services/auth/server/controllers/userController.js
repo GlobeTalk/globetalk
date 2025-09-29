@@ -9,8 +9,9 @@
 // and handle errors appropriately
 // finally we export the functions for use in our routes
 // this file only handles Firestore user data ensuring separation of concerns from auth logic
-// from the root, path to this file is src/services/auth/server/controllers/userController.js
-import admin from "../../../firebaseAdmin.js";
+import { admin, initFirebaseAdmin } from "../../firebaseAdmin.js";
+// Ensure Firebase Admin is initialized before any Firestore usage
+initFirebaseAdmin();
 
 function getFirestore() {
   return admin.firestore();

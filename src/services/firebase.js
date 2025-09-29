@@ -4,9 +4,11 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from "firebase/auth";
 import { initializeApp } from "firebase/app";
+
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtAw-A06ZJvKXfbfpNu9D8rYurdgX0sVk",
@@ -21,10 +23,38 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app);
+const secretKey = "groupBKPTN9";
+
+export function observeUser(callback) {
+
+  return onAuthStateChanged(auth, callback);
+}
+
+
+export async function signInWithGoogle() {
+
+  const result = await signInWithPopup(auth, googleProvider);
+
+  const user = result.user;
+
+  return { user };
+}
+
+
+export async function logout() {
+
+  await signOut(auth);
+  localStorage.removeItem("idToken");
+  localStorage.removeItem("policiesAccepted");
+  console.log("User signed out.");
+}
 
 export {
   auth,
   googleProvider,
+  db,
+  secretKey,
   signInWithPopup,
   signOut,
   onAuthStateChanged

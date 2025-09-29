@@ -1,0 +1,267 @@
+:root {
+    --globetalk-background: hsl(194, 53%, 79%);
+    --globetalk-card-blue: hsl(210, 77%, 46%);
+    --globetalk-text-dark: hsl(240, 100%, 19%);
+    --globetalk-text-darker: hsl(240, 100%, 13%);
+    --background: hsl(0, 0%, 100%);
+    --foreground: hsl(222.2, 84%, 4.9%);
+    --card: hsl(0, 0%, 100%);
+    --card-foreground: hsl(222.2, 84%, 4.9%);
+    --border: hsl(214.3, 31.8%, 91.4%);
+    --radius: 0.5rem;
+}
+
+.dark {
+    --globetalk-background: hsl(194, 53%, 79%);
+    --globetalk-card-blue: hsl(210, 77%, 46%);
+    --globetalk-text-dark: hsl(240, 100%, 19%);
+    --globetalk-text-darker: hsl(240, 100%, 13%);
+    --background: hsl(222.2, 84%, 4.9%);
+    --foreground: hsl(210, 40%, 98%);
+    --card: hsl(222.2, 84%, 4.9%);
+    --card-foreground: hsl(210, 40%, 98%);
+    --border: hsl(217.2, 32.6%, 17.5%);
+}
+
+* {
+    border-color: var(--border);
+}
+
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--globetalk-background);
+    color: var(--foreground);
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2rem 3rem;
+}
+
+header h1 {
+    font-size: 3rem;
+    font-weight: 400;
+    color: var(--globetalk-text-dark);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    margin: 0;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+nav a {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--globetalk-text-dark);
+    text-decoration: none;
+    transition: opacity 0.3s;
+}
+
+nav a:hover {
+    opacity: 0.8;
+}
+
+main {
+    padding: 0 3rem;
+}
+
+.dashboard-title {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.dashboard-title h2 {
+    font-size: 3rem;
+    font-weight: 400;
+    color: var(--globetalk-text-darker);
+    margin: 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3rem;
+    max-width: 80rem;
+    margin: 0 auto 5rem;
+}
+
+.stat-card {
+    background-color: var(--globetalk-card-blue);
+    border-radius: 40px;
+    padding: 3rem;
+    text-align: center;
+    aspect-ratio: 1/1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.stat-card div:first-child {
+    font-size: 3rem;
+    font-weight: 400;
+    color: white;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card div:last-child {
+    font-size: 2rem;
+    font-weight: 400;
+    color: white;
+}
+
+.reported-content h3 {
+    font-size: 2.5rem;
+    font-weight: 400;
+    color: var(--globetalk-text-darker);
+    margin-bottom: 3rem;
+}
+
+.content-item {
+    background-color: #d9d9d9;
+    border-radius: 10px;
+    padding: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.content-item .flex-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.3rem;
+}
+
+.content-item .user-info {
+    flex: 1;
+}
+
+.content-item .user-info .user-details {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1rem;
+}
+
+.content-item .user-info .user-details span:first-child {
+    font-size: 2rem;
+    font-weight: 400;
+    color: black;
+}
+
+.content-item .user-info .user-details span:last-child {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: black;
+    opacity: 0.8;
+}
+
+.content-item .user-info > div:last-child {
+    font-size: 2rem;
+    font-weight: 400;
+    color: black;
+}
+
+.content-item button {
+    background-color: var(--globetalk-card-blue);
+    border: none;
+    border-radius: 20px;
+    padding: 1rem 2rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.content-item button:hover {
+    background-color: rgba(74, 144, 226, 0.9);
+}
+
+.content-item button span {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: white;
+}
+
+@media (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .stat-card:last-child {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    header {
+        padding: 2rem 1.5rem;
+    }
+    header h1 {
+        font-size: 2.5rem;
+    }
+    nav {
+        gap: 1.5rem;
+    }
+    nav a {
+        font-size: 1.25rem;
+    }
+    main {
+        padding: 0 1.5rem;
+    }
+    .dashboard-title {
+        margin-bottom: 3rem;
+    }
+    .dashboard-title h2 {
+        font-size: 2.5rem;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 4rem;
+    }
+    .stat-card {
+        padding: 2rem;
+    }
+    .stat-card div:first-child {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    .stat-card div:last-child {
+        font-size: 1.75rem;
+    }
+    .reported-content h3 {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+    }
+    .content-item {
+        padding: 1.5rem;
+    }
+    .content-item .flex-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .content-item .user-info .user-details {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .content-item .user-info .user-details span:first-child {
+        font-size: 1.75rem;
+    }
+    .content-item .user-info .user-details span:last-child {
+        font-size: 1.25rem;
+    }
+    .content-item .user-info > div:last-child {
+        font-size: 1.75rem;
+    }
+    .content-item button {
+        padding: 0.75rem 1.5rem;
+    }
+    .content-item button span {
+        font-size: 1.25rem;
+    }
+}

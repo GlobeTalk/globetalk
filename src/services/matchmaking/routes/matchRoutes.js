@@ -6,6 +6,7 @@ const router = express.Router();
 
 // POST /api/match
 router.post("/", verifyToken, async (req, res) => {
+  console.log("🎯 Match route hit!");
   const userId = req.user.uid;
   const { language, region, interest } = req.body;
 
@@ -16,11 +17,13 @@ router.post("/", verifyToken, async (req, res) => {
   try {
     const match = await getRandomMatch(userId, { language, region, interest });
     if (!match) {
-      return res.status(404).json({ message: "No match found" });
+      console.log("No match found for user:", userId, " criteria:", { language, region, interest });
+      return res.status(404).json({ message: "No match found, please update your preferences" });
     }
     res.json({ match });
   } catch (err) {
     console.error("Matchmaking error:", err);
+    console.log("Error details:", err.message, err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });

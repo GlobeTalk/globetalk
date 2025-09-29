@@ -10,7 +10,7 @@ import {
   dissmissReport
 } from "/src/services/admin.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "/src/services/firebase.js";
+import { auth, logout } from "/src/services/firebase.js";
 
 // --- Constants ---
 const CONFIG = {
@@ -495,13 +495,14 @@ function createModal(id, content, options = {}) {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0,0,0,0.5);
+    background: rgba(10, 20, 40, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: ${CONFIG.MODAL_Z_INDEX};
     opacity: 0;
     transition: opacity 0.3s ease;
+    backdrop-filter: blur(6px) saturate(1.2);
   `;
 
   modal.innerHTML = content;
@@ -554,28 +555,26 @@ function createModal(id, content, options = {}) {
 
 function showBannedUsersModal(bannedUsers) {
   const content = `
-    <div style="background:#fff;padding:2.5rem 2rem;border-radius:20px;min-width:320px;max-width:90vw;max-height:80vh;box-shadow:0 10px 30px rgba(0,0,0,0.2);display:flex;flex-direction:column;">
-      <h2 id="bannedUsersModal-title" style="margin-bottom:1.5rem;font-size:2rem;">Banned Accounts (${bannedUsers.length})</h2>
+    <div style="background:linear-gradient(135deg, #232a3b 0%, #2b3a55 100%); border:3px solid #4a90e2; box-shadow:0 16px 48px 0 rgba(74,144,226,0.25), 0 2px 8px 0 rgba(0,0,0,0.18); padding:2.5rem 2rem; border-radius:28px; min-width:340px; max-width:95vw; max-height:80vh; display:flex; flex-direction:column;">
+      <h2 id="bannedUsersModal-title" style="margin-bottom:1.5rem;font-size:2.2rem; color:#4a90e2; text-align:center; letter-spacing:0.5px;">Banned Accounts (${bannedUsers.length})</h2>
       <div style="flex:1;max-height:50vh;overflow-y:auto;margin-bottom:1.5rem;">
         ${bannedUsers.length === 0 ? 
-          '<div style="text-align:center;padding:2rem;color:#666;">No banned accounts found.</div>' :
+          '<div style="text-align:center;padding:2rem;color:#b0b0b0;font-size:1.2rem;">No banned accounts found.</div>' :
           `<ul style="list-style:none;padding:0;margin:0;">
             ${bannedUsers.map(user => `
-              <li style="margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:1rem;border:1px solid #e0e0e0;border-radius:8px;">
+              <li style="margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:1.2rem 1rem;background:rgba(74,144,226,0.08);border:2px solid #4a90e2;border-radius:12px;">
                 <div style="flex:1;min-width:0;">
-                  <div style="font-weight:500;word-break:break-all;">${sanitizeInput(user.email || user.id || 'Unknown User')}</div>
-                  <div style="color:#888;font-size:0.9rem;margin-top:0.25rem;">Banned: ${formatDate(user.banDate)}</div>
-                  ${user.banReason ? `<div style="color:#666;font-size:0.85rem;margin-top:0.25rem;">Reason: ${sanitizeInput(user.banReason)}</div>` : ''}
+                  <div style="font-weight:600;word-break:break-all;color:#fff;font-size:1.1rem;">${sanitizeInput(user.email || user.id || 'Unknown User')}</div>
+                  <div style="color:#4a90e2;font-size:0.98rem;margin-top:0.25rem;">Banned: ${formatDate(user.banDate)}</div>
+                  ${user.banReason ? `<div style="color:#b0b0b0;font-size:0.95rem;margin-top:0.25rem;">Reason: ${sanitizeInput(user.banReason)}</div>` : ''}
                 </div>
-                <button class="unban-btn" data-id="${user.id}" style="background:#4caf50;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:8px;font-size:0.9rem;cursor:pointer;white-space:nowrap;transition:background 0.2s;">
-                  Unban
-                </button>
+                <button class="unban-btn" data-id="${user.id}" style="background:linear-gradient(135deg,#4caf50 0%,#388e3c 100%);color:#fff;border:none;padding:0.85rem 1.7rem;border-radius:10px;font-size:1rem;cursor:pointer;white-space:nowrap;transition:background 0.2s;font-weight:600;">Unban</button>
               </li>
             `).join('')}
           </ul>`
         }
       </div>
-      <button id="closeBannedModalBtn" style="background:#f5f5f5;color:#333;border:1px solid #ddd;padding:1rem 2rem;border-radius:12px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;">Close</button>
+      <button id="closeBannedModalBtn" style="background:linear-gradient(135deg,#f5f5f5 0%,#e0e0e0 100%);color:#333;border:1px solid #4a90e2;padding:1rem 2.2rem;border-radius:14px;font-size:1.15rem;cursor:pointer;transition:background 0.2s;font-weight:600;margin:0 auto;">Close</button>
     </div>
   `;
 
@@ -643,21 +642,19 @@ function showBannedUsersModal(bannedUsers) {
 
 function createUserModal({ userid, dateStr, report, reportID }, onBan) {
   const content = `
-    <div style="background:#fff;padding:2.5rem 2rem;border-radius:20px;min-width:320px;max-width:90vw;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-      <h2 id="manageUserModal-title" style="margin-bottom:1.5rem;font-size:2rem;">Manage User</h2>
-      <div style="margin-bottom:1rem;font-size:1.1rem;"><strong>Username:</strong> <span style="word-break:break-all;">${sanitizeInput(userid)}</span></div>
-      <div style="margin-bottom:1rem;font-size:1.1rem;"><strong>Date:</strong> ${sanitizeInput(dateStr)}</div>
-      <div style="margin-bottom:2rem;font-size:1.1rem;"><strong>Report:</strong> <div style="background:#f5f5f5;padding:1rem;border-radius:8px;margin-top:0.5rem;word-break:break-word;">${sanitizeInput(report)}</div></div>
-      
+    <div style="background:linear-gradient(135deg, #232a3b 0%, #2b3a55 100%); border:3px solid #4a90e2; box-shadow:0 16px 48px 0 rgba(74,144,226,0.25), 0 2px 8px 0 rgba(0,0,0,0.18); padding:2.5rem 2rem; border-radius:28px; min-width:340px; max-width:95vw; display:flex; flex-direction:column;">
+      <h2 id="manageUserModal-title" style="margin-bottom:1.5rem;font-size:2.2rem; color:#4a90e2; text-align:center; letter-spacing:0.5px;">Manage User</h2>
+      <div style="margin-bottom:1rem;font-size:1.15rem;color:#fff;"><strong>Username:</strong> <span style="word-break:break-all;">${sanitizeInput(userid)}</span></div>
+      <div style="margin-bottom:1rem;font-size:1.1rem;color:#b0b0b0;"><strong>Date:</strong> ${sanitizeInput(dateStr)}</div>
+      <div style="margin-bottom:2rem;font-size:1.1rem;"><strong>Report:</strong> <div style="background:rgba(74,144,226,0.08);padding:1rem;border-radius:8px;margin-top:0.5rem;word-break:break-word;color:#fff;">${sanitizeInput(report)}</div></div>
       <div style="margin-bottom:2rem;">
-        <label for="banReason" style="display:block;margin-bottom:0.5rem;font-weight:500;">Ban/Dismiss Reason (required):</label>
-        <textarea id="banReason" placeholder="Enter reason for banning this user..." style="width:100%;min-height:80px;padding:0.75rem;border:1px solid #ddd;border-radius:8px;resize:vertical;font-family:inherit;"></textarea>
+        <label for="banReason" style="display:block;margin-bottom:0.5rem;font-weight:600;color:#4a90e2;">Ban/Dismiss Reason (required):</label>
+        <textarea id="banReason" placeholder="Enter reason for banning this user..." style="width:100%;min-height:80px;padding:0.75rem;border:2px solid #4a90e2;border-radius:10px;resize:vertical;font-family:inherit;background:rgba(255,255,255,0.08);color:#fff;"></textarea>
       </div>
-      
       <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-        <button id="banUserBtn" style="background:#d32f2f;color:#fff;border:none;padding:1rem 2rem;border-radius:12px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;">Ban User</button>
-        <button id="dismissUserBtn" style="background:#ff9800;color:#fff;border:none;padding:1rem 2rem;border-radius:12px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;">Dismiss Report</button>
-        <button id="closeModalBtn" style="background:#f5f5f5;color:#333;border:1px solid #ddd;padding:1rem 2rem;border-radius:12px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;">Cancel</button>
+        <button id="banUserBtn" style="background:linear-gradient(135deg,#d32f2f 0%,#b71c1c 100%);color:#fff;border:none;padding:1rem 2.2rem;border-radius:14px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;font-weight:600;">Ban User</button>
+        <button id="dismissUserBtn" style="background:linear-gradient(135deg,#ff9800 0%,#ffb300 100%);color:#fff;border:none;padding:1rem 2.2rem;border-radius:14px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;font-weight:600;">Dismiss Report</button>
+        <button id="closeModalBtn" style="background:linear-gradient(135deg,#f5f5f5 0%,#e0e0e0 100%);color:#333;border:1px solid #4a90e2;padding:1rem 2.2rem;border-radius:14px;font-size:1.1rem;cursor:pointer;transition:background 0.2s;flex:1;min-width:120px;font-weight:600;">Cancel</button>
       </div>
     </div>
   `;
@@ -855,76 +852,109 @@ async function renderReports(type) {
       const report = data.reason || data.report || 'No reason provided';
       const dateStr = formatDate(data.timestamp);
 
-      const item = document.createElement('div');
-      item.className = 'content-item';
-      item.style.cssText = `
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: box-shadow 0.2s ease, transform 0.2s ease;
-      `;
+      // New card style for both unresolved and resolved reports
+      const card = document.createElement('div');
+      card.className = 'content-item';
+      card.style.background = 'linear-gradient(135deg, #232a3b 0%, #2b3a55 100%)';
+      card.style.border = '2px solid #4a90e2';
+      card.style.borderRadius = '18px';
+      card.style.boxShadow = '0 4px 24px rgba(74,144,226,0.12)';
+      card.style.padding = '2rem 2.5rem';
+      card.style.marginBottom = '0';
 
-      item.addEventListener('mouseenter', () => {
-        item.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        item.style.transform = 'translateY(-2px)';
-      });
+      const flex = document.createElement('div');
+      flex.style.display = 'flex';
+      flex.style.alignItems = 'center';
+      flex.style.gap = '2rem';
 
-      item.addEventListener('mouseleave', () => {
-        item.style.boxShadow = 'none';
-        item.style.transform = 'translateY(0)';
-      });
+      // User info
+      const info = document.createElement('div');
+      info.style.flex = '1';
 
-      let resolvedDetails = '';
+      const username = document.createElement('div');
+      username.style.fontSize = '1.3rem';
+      username.style.color = '#fff';
+      username.style.fontWeight = '600';
+      username.textContent = `User: ${sanitizeInput(reportedUid)}`;
+
+      const reporter = document.createElement('div');
+      reporter.style.fontSize = '1.1rem';
+      reporter.style.color = '#b0b0b0';
+      reporter.style.marginTop = '0.5rem';
+      reporter.textContent = `Reported By: ${sanitizeInput(reporterUid)}`;
+
+      const date = document.createElement('div');
+      date.style.fontSize = '1rem';
+      date.style.color = '#4a90e2';
+      date.style.marginTop = '0.5rem';
+      date.textContent = `Date: ${dateStr}`;
+
+      const reportLabel = document.createElement('div');
+      reportLabel.style.fontWeight = '500';
+      reportLabel.style.color = '#fff';
+      reportLabel.style.margin = '0.7rem 0 0.3rem 0';
+      reportLabel.textContent = 'Report:';
+
+      const reportContent = document.createElement('div');
+      reportContent.style.color = '#b0b0b0';
+      reportContent.style.lineHeight = '1.4';
+      reportContent.style.background = 'rgba(74,144,226,0.08)';
+      reportContent.style.padding = '0.75rem';
+      reportContent.style.borderRadius = '8px';
+      reportContent.style.wordBreak = 'break-word';
+      reportContent.textContent = sanitizeInput(report);
+
+      info.appendChild(username);
+      info.appendChild(reporter);
+      info.appendChild(date);
+      info.appendChild(reportLabel);
+      info.appendChild(reportContent);
+
+      // Resolved details
       if (type === 'resolved') {
-        resolvedDetails = `
-          <div style="margin-top:0.5rem;font-size:1rem;"><strong>Outcome:</strong> ${sanitizeInput(data.outcome || 'N/A')}</div>
-          <div style="margin-top:0.5rem;font-size:1rem;"><strong>Outcome Reason:</strong> ${sanitizeInput(data.outcomeReason || 'N/A')}</div>
-          <div style="margin-top:0.5rem;font-size:1rem;"><strong>Resolved By:</strong> ${sanitizeInput(data.resolvedBy || 'N/A')}</div>
-          <div style="margin-top:0.5rem;font-size:1rem;"><strong>Resolved At:</strong> ${formatDate(data.resolvedAt)}</div>
-        `;
+        const outcome = document.createElement('div');
+        outcome.style.marginTop = '0.5rem';
+        outcome.style.fontSize = '1rem';
+        outcome.style.color = '#4a90e2';
+        outcome.innerHTML = `<strong>Outcome:</strong> ${sanitizeInput(data.outcome || 'N/A')}`;
+        info.appendChild(outcome);
+
+        const outcomeReason = document.createElement('div');
+        outcomeReason.style.marginTop = '0.5rem';
+        outcomeReason.style.fontSize = '1rem';
+        outcomeReason.style.color = '#b0b0b0';
+        outcomeReason.innerHTML = `<strong>Outcome Reason:</strong> ${sanitizeInput(data.outcomeReason || 'N/A')}`;
+        info.appendChild(outcomeReason);
+
+        const resolvedBy = document.createElement('div');
+        resolvedBy.style.marginTop = '0.5rem';
+        resolvedBy.style.fontSize = '1rem';
+        resolvedBy.style.color = '#b0b0b0';
+        resolvedBy.innerHTML = `<strong>Resolved By:</strong> ${sanitizeInput(data.resolvedBy || 'N/A')}`;
+        info.appendChild(resolvedBy);
+
+        const resolvedAt = document.createElement('div');
+        resolvedAt.style.marginTop = '0.5rem';
+        resolvedAt.style.fontSize = '1rem';
+        resolvedAt.style.color = '#b0b0b0';
+        resolvedAt.innerHTML = `<strong>Resolved At:</strong> ${formatDate(data.resolvedAt)}`;
+        info.appendChild(resolvedAt);
       }
 
-      item.innerHTML =
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;">' +
-          '<div style="flex:1;min-width:0;">' +
-            '<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:0.75rem;">' +
-              '<div>' +
-                '<span style="font-weight:500;color:#333;">User:</span>' +
-                '<span style="color:#666;word-break:break-all;margin-left:0.5rem;">' + sanitizeInput(reportedUid) + '</span>' +
-              '</div>' +
-              '<div>' +
-                '<span style="font-weight:500;color:#333;">Reported By:</span>' +
-                '<span style="color:#666;margin-left:0.5rem;">' + sanitizeInput(reporterUid) + '</span>' +
-              '</div>' +
-              '<div>' +
-                '<span style="font-weight:500;color:#333;">Date:</span>' +
-                '<span style="color:#666;margin-left:0.5rem;">' + dateStr + '</span>' +
-              '</div>' +
-            '</div>' +
-            '<div>' +
-              '<div style="font-weight:500;color:#333;margin-bottom:0.5rem;">Report:</div>' +
-              '<div style="color:#666;line-height:1.4;background:#f8f9fa;padding:0.75rem;border-radius:6px;word-break:break-word;">' + sanitizeInput(report) + '</div>' +
-            '</div>' +
-            resolvedDetails +
-          '</div>' +
-          (type === 'unresolved'
-            ? '<button class="manage-user-btn" style="background:#2196f3;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:8px;font-size:0.9rem;cursor:pointer;white-space:nowrap;transition:background 0.2s;align-self:flex-start;">Manage User</button>'
-            : '') +
-        '</div>';
+      flex.appendChild(info);
 
+      // Manage button (only for unresolved)
       if (type === 'unresolved') {
-        const manageBtn = item.querySelector('.manage-user-btn');
-        
-        manageBtn.addEventListener('mouseenter', () => {
-          manageBtn.style.background = '#1976d2';
-        });
-
-        manageBtn.addEventListener('mouseleave', () => {
-          manageBtn.style.background = '#2196f3';
-        });
-
+        const manageBtn = document.createElement('button');
+        manageBtn.className = 'manage-user-btn';
+        manageBtn.style.background = 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)';
+        manageBtn.style.color = '#fff';
+        manageBtn.style.fontWeight = '600';
+        manageBtn.style.border = 'none';
+        manageBtn.style.borderRadius = '10px';
+        manageBtn.style.padding = '0.8rem 2rem';
+        manageBtn.style.fontSize = '1rem';
+        manageBtn.textContent = 'Manage';
         manageBtn.addEventListener('click', () => {
           createUserModal(
             { userid: reportedUid, dateStr, report, reportID },
@@ -940,9 +970,11 @@ async function renderReports(type) {
             }
           );
         });
+        flex.appendChild(manageBtn);
       }
 
-      container.appendChild(item);
+      card.appendChild(flex);
+      container.appendChild(card);
     });
 
     Logger.info(`Loaded ${reports.length} ${type} reports`);
@@ -1127,7 +1159,23 @@ function setupBannedUsersModal() {
 
 // --- Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
+
   Logger.info('DOM loaded, setting up admin dashboard');
+
+  // Logout button logic
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await logout();
+      } catch (error) {
+        Logger.error('Logout error', error);
+      } finally {
+        window.location.href = "login.html";
+      }
+    });
+  }
 
   // Set up authentication listener
   onAuthStateChanged(auth, async (user) => {

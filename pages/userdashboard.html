@@ -5,15 +5,317 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlobeTalk - Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../src/frontend/styles/userdashboard.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .nav-link:hover {
+            background: #f7fafc;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        #logoutBtn {
+            margin-left: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        #logoutBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .globetalk-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            font-weight: 600;
+            text-align: center;
+            color: white;
+            margin: 2rem 0;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            letter-spacing: -0.5px;
+        }
+
+        .dashboard-title-container {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .dashboard-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            color: white;
+            font-weight: 600;
+            display: inline-block;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Section Styles */
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        /* Pen Pal Cards */
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .pen-pal-card {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pen-pal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .pen-pal-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .pen-pal-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            background: white;
+        }
+
+        .pen-pal-card h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .pen-pal-info p {
+            margin: 0.75rem 0;
+            color: #4a5568;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .pen-pal-info strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        /* Conversations */
+        .conversations-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .conversation-item {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+
+        .conversation-item:hover {
+            transform: translateX(8px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+            background: white;
+            border-left-color: #667eea;
+        }
+
+        .conversation-item h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .conversation-time {
+            color: #718096;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Loading and Empty States */
+        span {
+            display: block;
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        /* Retry Button */
+        button[onclick="location.reload()"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button[onclick="location.reload()"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .globetalk-title {
+                font-size: 2rem;
+            }
+
+            .dashboard-title {
+                font-size: 1.5rem;
+            }
+
+            nav {
+                padding: 1rem;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Smooth Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .section:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .section:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+    </style>
 </head>
 <body>
-    <div class="min-h-screen bg-globe-blue">
+    <div class="min-h-screen">
         <!-- Navigation -->
         <nav>
             <a href="userdashboard.html" class="nav-link">Home</a>
             <a href="findPal.html" class="nav-link">Find Pen Pal</a>
             <a href="settings.html" class="nav-link">Settings & Safety</a>
+            <button id="logoutBtn" class="nav-link">Logout</button>
         </nav>
 
         <!-- Main Content -->
@@ -30,7 +332,7 @@
             <div class="section">
                 <h3 class="section-title">Pen Pal Suggestions</h3>
                 <div class="cards-container" id="penPalCards">
-                    <!-- Pen pal cards will be rendered here by JS -->
+                    <span>Loading...</span>
                 </div>
             </div>
 
@@ -38,97 +340,288 @@
             <div class="section">
                 <h3 class="section-title">Active Conversations</h3>
                 <div class="conversations-container" id="conversationsContainer">
-                    <!-- Active conversations will be rendered here by JS -->
+                    <span>Loading...</span>
                 </div>
             </div>
         </div>
     </div>
     <script type="module">
         import { getActiveConversations, getUsername } from '../src/services/userdashboard.js';
-        import { auth } from '../src/services/firebase.js';
+        import { auth, logout } from '../src/services/firebase.js';
         import { onAuthStateChanged } from "firebase/auth";
 
+        // Constants
+        const MAX_RETRY_ATTEMPTS = 3;
+        const RETRY_DELAY = 1000;
+        const AUTH_TIMEOUT = 10000;
+
+        // Utility function to format time
         function formatTimeAgo(date) {
-            const now = new Date();
-            const diffMs = now - date;
-            const diffSec = Math.floor(diffMs / 1000);
-            if (diffSec < 60) return `${diffSec}s`;
-            const diffMin = Math.floor(diffSec / 60);
-            if (diffMin < 60) return `${diffMin}m`;
-            const diffHr = Math.floor(diffMin / 60);
-            if (diffHr < 24) return `${diffHr}h`;
-            const diffDay = Math.floor(diffHr / 24);
-            return `${diffDay} day${diffDay > 1 ? 's' : ''}`;
+            try {
+                if (!date) return 'Unknown';
+                
+                const timestamp = date instanceof Date ? date : new Date(date);
+                if (isNaN(timestamp.getTime())) return 'Unknown';
+
+                const now = new Date();
+                const diffMs = now - timestamp;
+                
+                if (diffMs < 0) return 'Just now';
+                
+                const diffSec = Math.floor(diffMs / 1000);
+                if (diffSec < 60) return `${diffSec}s ago`;
+                
+                const diffMin = Math.floor(diffSec / 60);
+                if (diffMin < 60) return `${diffMin}m ago`;
+                
+                const diffHr = Math.floor(diffMin / 60);
+                if (diffHr < 24) return `${diffHr}h ago`;
+                
+                const diffDay = Math.floor(diffHr / 24);
+                if (diffDay < 7) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
+                
+                const diffWeek = Math.floor(diffDay / 7);
+                if (diffWeek < 4) return `${diffWeek} week${diffWeek !== 1 ? 's' : ''} ago`;
+                
+                return timestamp.toLocaleDateString();
+            } catch (error) {
+                console.error('Error formatting time:', error);
+                return 'Unknown';
+            }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            onAuthStateChanged(auth, async (user) => {
-                if (!user) return;
-                const userId = user.uid;
+        // Retry logic for failed operations
+        async function retryOperation(operation, attempts = MAX_RETRY_ATTEMPTS) {
+            for (let i = 0; i < attempts; i++) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    if (i === attempts - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+                }
+            }
+        }
 
-                // Render pen pal suggestions
-                const penPalCards = document.getElementById('penPalCards');
-                if (penPalCards) {
-                    penPalCards.innerHTML = '<span>Loading...</span>';
-                    try {
-                        const suggestions = await import('../src/services/userdashboard.js').then(mod => mod.getPenPalSuggestions(userId));
-                        penPalCards.innerHTML = '';
-                        if (suggestions.length === 0) {
-                            penPalCards.innerHTML = '<span>No pen pal suggestions found.</span>';
-                        } else {
-                            suggestions.forEach(user => {
-                                const card = document.createElement('div');
-                                card.className = 'pen-pal-card';
-                                card.style.cursor = 'pointer';
-                                card.innerHTML = `
-                                    <h4>${user.username || 'Unknown'}</h4>
-                                    <div class="pen-pal-info">
-                                        <p><strong>Region:</strong> ${user.region || 'N/A'}</p>
-                                        <p><strong>Hobbies:</strong> ${(user.hobbies && user.hobbies.length) ? user.hobbies.join(', ') : 'N/A'}</p>
-                                        <p><strong>Languages:</strong> ${(user.languages && user.languages.length) ? user.languages.join(', ') : 'N/A'}</p>
-                                    </div>
-                                `;
-                                card.onclick = () => {
-                                    // Redirect to profile.html with Firestore document id
-                                    console.log(encodeURIComponent(user._docId));
-                                    window.location.href = `../pages/profile.html?userId=${encodeURIComponent(user._docId)}`;
-                                };
-                                penPalCards.appendChild(card);
-                            });
-                        }
-                    } catch (e) {
-                        penPalCards.innerHTML = '<span>Error loading pen pal suggestions.</span>';
-                    }
+        // Safe HTML escaping
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Render pen pal suggestions
+        async function renderPenPalSuggestions(userId) {
+            const penPalCards = document.getElementById('penPalCards');
+            if (!penPalCards) return;
+
+            try {
+                penPalCards.innerHTML = '<span>Loading pen pal suggestions...</span>';
+                
+                const { getPenPalSuggestions } = await import('../src/services/userdashboard.js');
+                const suggestions = await retryOperation(() => getPenPalSuggestions(userId));
+                
+                penPalCards.innerHTML = '';
+                
+                if (!suggestions || suggestions.length === 0) {
+                    penPalCards.innerHTML = '<span style="color: #666;">No pen pal suggestions available at the moment. Check back later!</span>';
+                    return;
                 }
 
-                // Render active conversations
-                const container = document.getElementById('conversationsContainer');
-                if (container) {
-                    container.innerHTML = '<span>Loading...</span>';
+                suggestions.forEach(user => {
                     try {
-                        const username = await getUsername(userId);
-                        const conversations = await getActiveConversations(username);
-                        container.innerHTML = '';
-                        if (conversations.length === 0) {
-                            container.innerHTML = '<span>No active conversations.</span>';
-                        } else {
-                            conversations.forEach(conv => {
-                                const item = document.createElement('div');
-                                item.className = 'conversation-item';
-                                item.innerHTML = `
-                                    <h4>${conv.otherUser}</h4>
-                                    <span class="conversation-time">${formatTimeAgo(conv.lastUpdated)}</span>
-                                `;
-                                container.appendChild(item);
-                            });
-                        }
-                    } catch (e) {
-                        console.log(e);
-                        container.innerHTML = '<span>Error loading conversations.</span>';
+                        const card = document.createElement('div');
+                        card.className = 'pen-pal-card';
+                        card.setAttribute('role', 'button');
+                        card.setAttribute('tabindex', '0');
+                        
+                        const username = escapeHtml(user?.username || 'Unknown User');
+                        const region = escapeHtml(user?.region || 'N/A');
+                        const hobbies = Array.isArray(user?.hobbies) && user.hobbies.length 
+                            ? user.hobbies.map(h => escapeHtml(h)).join(', ') 
+                            : 'N/A';
+                        const languages = Array.isArray(user?.languages) && user.languages.length 
+                            ? user.languages.map(l => escapeHtml(l)).join(', ') 
+                            : 'N/A';
+                        
+                        card.innerHTML = `
+                            <h4>${username}</h4>
+                            <div class="pen-pal-info">
+                                <p><strong>Region:</strong> ${region}</p>
+                                <p><strong>Hobbies:</strong> ${hobbies}</p>
+                                <p><strong>Languages:</strong> ${languages}</p>
+                            </div>
+                        `;
+                        
+                        const navigateToProfile = () => {
+                            if (user?._docId) {
+                                window.location.href = `../pages/profile.html?userId=${encodeURIComponent(user._docId)}`;
+                            } else {
+                                console.error('User ID not available');
+                                alert('Unable to view this profile. Please try again.');
+                            }
+                        };
+                        
+                        card.onclick = navigateToProfile;
+                        card.onkeypress = (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                navigateToProfile();
+                            }
+                        };
+                        
+                        penPalCards.appendChild(card);
+                    } catch (cardError) {
+                        console.error('Error rendering pen pal card:', cardError);
                     }
+                });
+            } catch (error) {
+                console.error('Error loading pen pal suggestions:', error);
+                penPalCards.innerHTML = `
+                    <span style="color: #d32f2f;">
+                        Unable to load pen pal suggestions. 
+                        <button onclick="location.reload()" style="margin-left: 10px;">
+                            Retry
+                        </button>
+                    </span>
+                `;
+            }
+        }
+
+        // Render active conversations
+        async function renderActiveConversations(userId) {
+            const container = document.getElementById('conversationsContainer');
+            if (!container) return;
+
+            try {
+                container.innerHTML = '<span>Loading conversations...</span>';
+                
+                const username = await retryOperation(() => getUsername(userId));
+                
+                if (!username) {
+                    throw new Error('Unable to retrieve username');
+                }
+                
+                const conversations = await retryOperation(() => getActiveConversations(username));
+                
+                container.innerHTML = '';
+                
+                if (!conversations || conversations.length === 0) {
+                    container.innerHTML = '<span style="color: #666;">No active conversations yet. Find a pen pal to start chatting!</span>';
+                    return;
+                }
+
+                conversations.forEach(conv => {
+                    try {
+                        const item = document.createElement('div');
+                        item.className = 'conversation-item';
+                        item.setAttribute('role', 'button');
+                        item.setAttribute('tabindex', '0');
+                        
+                        const otherUser = escapeHtml(conv?.otherUser || 'Unknown');
+                        const timeAgo = formatTimeAgo(conv?.lastUpdated);
+                        
+                        item.innerHTML = `
+                            <h4>${otherUser}</h4>
+                            <span class="conversation-time">${timeAgo}</span>
+                        `;
+                        
+                        const navigateToChat = () => {
+                            if (conv?.conversationId || conv?.otherUser) {
+                                const chatId = conv.conversationId || conv.otherUser;
+                                window.location.href = `../pages/chat.html?id=${encodeURIComponent(chatId)}`;
+                            }
+                        };
+                        
+                        item.onclick = navigateToChat;
+                        item.onkeypress = (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                navigateToChat();
+                            }
+                        };
+                        
+                        container.appendChild(item);
+                    } catch (convError) {
+                        console.error('Error rendering conversation item:', convError);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                container.innerHTML = `
+                    <span style="color: #d32f2f;">
+                        Unable to load conversations. 
+                        <button onclick="location.reload()" style="margin-left: 10px;">
+                            Retry
+                        </button>
+                    </span>
+                `;
+            }
+        }
+
+        // Handle logout
+        async function handleLogout() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (!logoutBtn) return;
+
+            logoutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                
+                try {
+                    logoutBtn.disabled = true;
+                    logoutBtn.textContent = 'Logging out...';
+                    
+                    await logout();
+                    window.location.href = '../pages/login.html';
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    alert('Failed to log out. Please try again.');
+                    logoutBtn.disabled = false;
+                    logoutBtn.textContent = 'Logout';
                 }
             });
-        });
+        }
+
+        // Initialize dashboard
+        async function initializeDashboard() {
+            try {
+                handleLogout();
+
+                // Set up auth timeout
+                const authTimeout = setTimeout(() => {
+                    console.error('Authentication timeout');
+                    window.location.href = '../pages/login.html';
+                }, AUTH_TIMEOUT);
+
+                onAuthStateChanged(auth, async (user) => {
+                    clearTimeout(authTimeout);
+                    
+                    if (!user) {
+                        console.log('No authenticated user, redirecting to login');
+                        window.location.href = '../pages/login.html';
+                        return;
+                    }
+
+                    const userId = user.uid;
+                    
+                    // Load both sections concurrently
+                    await Promise.allSettled([
+                        renderPenPalSuggestions(userId),
+                        renderActiveConversations(userId)
+                    ]);
+                });
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+                alert('Failed to initialize dashboard. Please refresh the page.');
+            }
+        }
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            initializeDashboard();
+        }
     </script>
 </body>
 </html>

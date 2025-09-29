@@ -350,7 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
           hobbies: document.getElementById('hobbies').value.split(',').map(hobby => hobby.trim()),
           bio: document.getElementById('bio').value,
           createdAt: new Date(),
-          secret: "groupBKPTN9"
+          secret: "groupBKPTN9",
+          username: null // will be assigned by backend
         };
 
         // Get fresh ID token

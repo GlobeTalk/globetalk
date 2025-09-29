@@ -1,8 +1,8 @@
-import { admin } from './FirebaseAdmin.js';
+import { db } from './firebase.js';
 import { doc, getDoc, query, collection, where, orderBy, getDocs, documentId } from "firebase/firestore";
 
 
-db = admin.firestore();
+
 // Update specific profile fields
 export async function getActiveConversations(username) {
   const q = query(

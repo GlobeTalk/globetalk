@@ -6,7 +6,7 @@ import { doc, getDoc, query, collection, where, orderBy, getDocs, documentId } f
 // Update specific profile fields
 export async function getActiveConversations(username) {
   const q = query(
-    collection(db, "conversations"),
+    collection(db, "chats"),
     where("participants", "array-contains", username),
     orderBy("lastUpdated", "desc")
   );

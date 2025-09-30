@@ -10,7 +10,8 @@
     "lint": "eslint src tests pages",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build"
   },
   "repository": {
     "type": "git",
@@ -24,6 +25,7 @@
   },
   "homepage": "https://github.com/GlobeTalk/globetalk#readme",
   "dependencies": {
+    "express": "^5.1.0",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.5.0"
   },

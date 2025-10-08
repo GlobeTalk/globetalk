@@ -71,10 +71,15 @@ import { onAuthStateChanged } from "firebase/auth";
         function initializeChatButton() {
             const chatBtn = document.querySelector('.start-chat-btn');
             if (chatBtn) {
+                // Always use the userId from the profile being viewed
+                const userId = getQueryParam('userId');
                 chatBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const userId = getQueryParam('userId');
-                    window.location.href = userId ? `findPal.html?targetUser=${encodeURIComponent(userId)}` : 'findPal.html';
+                    if (userId) {
+                        window.location.href = `chats.html?targetUser=${encodeURIComponent(userId)}`;
+                    } else {
+                        window.location.href = 'chats.html';
+                    }
                 });
             }
         }

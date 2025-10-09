@@ -1,8 +1,8 @@
 
-import { admin } from './FirebaseAdmin.js';
+import { db } from './firebase.js';
 import { writeBatch, collection, getDocs, getDoc, query, where, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
-db = admin.firestore();
+
 
 // Get total number of banned users
 export async function getBannedUserCount() {

@@ -4,60 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlobeTalk Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../src/frontend/styles/admin.css">
 </head>
 <body>
-    <div>
-        <!-- Navigation Header -->
-        <header>
-            <div>
-                <h1>GlobeTalk</h1>
-            </div>
-            <nav>
-                <a href="admin.html">Home</a>
-                <a href="#">Settings & Safety</a>
-            </nav>
-        </header>
+    <div class="min-h-screen">
+        <!-- Navigation -->
+        <nav>
+            <a href="admin.html" class="nav-link">Home</a>
+            <a href="#" class="nav-link">Settings & Safety</a>
+            <button id="logoutBtn" class="nav-link">Logout</button>
+        </nav>
 
         <!-- Main Content -->
-        <main>
-            <!-- Admin Dashboard Title -->
-            <div class="dashboard-title">
-                <h2>Admin Dashboard</h2>
+        <div class="main-content">
+            <!-- GlobeTalk branding -->
+            <h1 class="globetalk-title">GlobeTalk</h1>
+
+            <!-- Dashboard Title -->
+            <div class="dashboard-title-container">
+                <h2 class="dashboard-title">Admin Dashboard</h2>
             </div>
 
             <!-- Stats Cards -->
             <div class="stats-grid">
-                <!-- Active Users Card -->
                 <div class="stat-card">
                     <div id="activeUsersCount">...</div>
-                    <div>Active users</div>
+                    <div>Active Users</div>
                 </div>
 
-                <!-- Reported Users Card -->
                 <div class="stat-card">
                     <div id="reportedUsersCount">...</div>
-                    <div>Reported users</div>
+                    <div>Reported Users</div>
                 </div>
 
-                <!-- Banned Accounts Card -->
-                <div class="stat-card">
+                <div class="stat-card" id="bannedUsersCard">
                     <div id="bannedUsersCount">...</div>
-                    <div>Banned accounts</div>
+                    <div>Banned Accounts</div>
                 </div>
             </div>
 
             <!-- Reported Content Section -->
-            <div class="reported-content">
-                <h3>Reports</h3>
+            <div class="section" style="background:rgba(255,255,255,0.07); box-shadow:0 8px 32px rgba(74,144,226,0.10); border:2px solid #4a90e2;">
+                <h3 class="section-title" style="font-size:2.2rem; color:#4a90e2; letter-spacing:0.5px;">Reports</h3>
                 <div id="toggleContainer"></div>
-                <div id="reportedUsersList">
-                    <!-- Reported content items will be rendered here by JS -->
+                <div id="reportedUsersList" style="display:flex; flex-direction:column; gap:2rem;">
+                    <div class="loading-state" style="background:rgba(74,144,226,0.08); border-radius:12px; padding:2rem; box-shadow:0 2px 8px rgba(74,144,226,0.08);">
+                        <div class="loading-spinner"></div>
+                        <div style="font-size:1.3rem; color:#4a90e2; font-weight:600; margin-top:1rem;">Loading reports...</div>
+                    </div>
+                    <!-- Example Report Card (JS will render real data) -->
+                    <!--
+                    <div class="content-item" style="background:linear-gradient(135deg, #232a3b 0%, #2b3a55 100%); border:2px solid #4a90e2; border-radius:18px; box-shadow:0 4px 24px rgba(74,144,226,0.12); padding:2rem 2.5rem;">
+                        <div style="display:flex; align-items:center; gap:2rem;">
+                            <div style="flex:1;">
+                                <div style="font-size:1.3rem; color:#fff; font-weight:600;">Username: johndoe</div>
+                                <div style="font-size:1.1rem; color:#b0b0b0; margin-top:0.5rem;">Reported for: Inappropriate language</div>
+                                <div style="font-size:1rem; color:#4a90e2; margin-top:0.5rem;">Date: 2025-09-29</div>
+                            </div>
+                            <button class="manage-user-btn" style="background:linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); color:#fff; font-weight:600; border:none; border-radius:10px; padding:0.8rem 2rem; font-size:1rem;">Manage</button>
+                        </div>
+                    </div>
+                    -->
                 </div>
             </div>
-        </main>
+        </div>
     </div>
     <script type="module" src="../src/frontend/scripts/adminpage.js"></script>
 </body>

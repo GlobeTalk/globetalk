@@ -141,3 +141,6 @@ src/services/moderation-api/serviceAccountkey.json
 src/services/moderation-api/serviceAccountkey.json
 
 *-firebase-adminsdk*.json
+
+# Environment variables
+.env

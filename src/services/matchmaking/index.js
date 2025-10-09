@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import matchRoutes from "./routes/match.js";
+import matchRoutes from "./routes/matchRoutes.js";
 
 
 dotenv.config();
@@ -21,5 +21,5 @@ app.get("/", (req, res) => res.send("Globetalk Matchmaking API is live ✅"));
 app.use("/api/match", matchRoutes);
 
 // Start server
-const PORT = process.env.PORT || 8081; // different port from auth API
+const PORT = process.env.PORT || 8082; 
 app.listen(PORT, () => console.log(`🚀 Matchmaking API running on port ${PORT}`));

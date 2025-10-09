@@ -1,4 +1,5 @@
 import { signInWithGoogle, observeUser } from "../../services/firebase.js";
+import { isBannedUser, isAdmin } from "../../services/admin.js"; 
 
 // Constants and Configuration
 const CONFIG = {
@@ -6,7 +7,8 @@ const CONFIG = {
   PAGES: {
     LOGIN: '../../../pages/login.html',
     DASHBOARD: '../../../pages/userdashboard.html',
-    ONBOARDING: '../../../pages/onboarding.html'
+    ONBOARDING: '../../../pages/onboarding.html',
+    ADMIN_DASHBOARD: '../../../pages/admin.html' 
   },
   STORAGE_KEYS: {
     ID_TOKEN: 'idToken',
@@ -39,9 +41,8 @@ class NetworkError extends Error {
   }
 }
 
-// Utility functions for better code organization
+// Utility functions (unchanged except for safeNavigate)
 const utils = {
-  // Secure token storage with expiration
   setSecureToken(token, expirationHours = 1) {
     const expiration = Date.now() + (expirationHours * 60 * 60 * 1000);
     const tokenData = { token, expiration };
@@ -62,7 +63,6 @@ const utils = {
     }
   },
 
-  // Sanitize and validate user input
   sanitizeUserId(userId) {
     if (!userId || typeof userId !== 'string') {
       throw new AuthError('Invalid user ID', 'INVALID_USER_ID');
@@ -70,17 +70,14 @@ const utils = {
     return userId.trim();
   },
 
-  // Safe navigation with loading states
   async safeNavigate(url, loadingElement = null) {
     try {
       if (loadingElement) {
         loadingElement.style.display = 'block';
       }
       
-      // Add small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Validate URL before navigation
       if (!url || !url.startsWith('../')) {
         throw new Error('Invalid navigation URL');
       }
@@ -95,8 +92,7 @@ const utils = {
     }
   },
 
-  // Retry mechanism for API calls
-  async retryOperation(operation, maxAttempts = CONFIG.RETRY_CONFIG.MAX_ATTEMPTS) {
+  retryOperation: async function retryOperation(operation, maxAttempts = CONFIG.RETRY_CONFIG.MAX_ATTEMPTS) {
     let lastError;
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -116,7 +112,6 @@ const utils = {
     throw lastError;
   },
 
-  // Debounce function for UI interactions
   debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -130,7 +125,7 @@ const utils = {
   }
 };
 
-// User existence check with caching and error handling
+// User existence check (unchanged)
 async function checkIfUserExists(userId) {
   try {
     const sanitizedUserId = utils.sanitizeUserId(userId);
@@ -142,7 +137,7 @@ async function checkIfUserExists(userId) {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/users/${sanitizedUserId}/exists`, {
@@ -188,7 +183,7 @@ async function checkIfUserExists(userId) {
   }
 }
 
-// Enhanced UI state management
+// UI State Manager (unchanged)
 class UIStateManager {
   constructor() {
     this.loadingStates = new Set();
@@ -210,7 +205,6 @@ class UIStateManager {
   }
 
   showMessage(message, type = 'info', duration = 5000) {
-    // Create or update message element
     let messageEl = document.getElementById('auth-message');
     if (!messageEl) {
       messageEl = document.createElement('div');
@@ -230,7 +224,6 @@ class UIStateManager {
       document.body.appendChild(messageEl);
     }
 
-    // Set message type styles
     const colors = {
       success: '#10b981',
       error: '#ef4444',
@@ -242,7 +235,6 @@ class UIStateManager {
     messageEl.textContent = message;
     messageEl.style.display = 'block';
 
-    // Auto-hide message
     setTimeout(() => {
       if (messageEl) {
         messageEl.style.display = 'none';
@@ -251,13 +243,12 @@ class UIStateManager {
   }
 }
 
-//  Main application logic
+// Main application logic
 document.addEventListener("DOMContentLoaded", () => {
   const loginBtn = document.getElementById("loginBtn");
   const privacyCheckbox = document.getElementById("privacy");
   const consentCheckbox = document.getElementById("consent");
   
-  // Validate required elements
   if (!loginBtn || !privacyCheckbox || !consentCheckbox) {
     console.error('Required DOM elements not found');
     return;
@@ -266,7 +257,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const uiManager = new UIStateManager();
   let authStateObserverActive = false;
 
-  // Button state management with debouncing
   const updateButtonState = utils.debounce(() => {
     try {
       const returningUser = localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true";
@@ -274,7 +264,6 @@ document.addEventListener("DOMContentLoaded", () => {
       
       loginBtn.disabled = !(returningUser || currentlyAccepted);
       
-      // Update UI feedback
       if (loginBtn.disabled && !returningUser) {
         loginBtn.title = "Please accept both privacy policy and consent terms";
       } else {
@@ -298,7 +287,6 @@ document.addEventListener("DOMContentLoaded", () => {
     uiManager.setLoading(loginBtn, true, 'Signing in...');
 
     try {
-      // Validate policies acceptance
       const policiesAccepted = privacyCheckbox.checked && consentCheckbox.checked;
       const storedPoliciesAccepted = localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true";
       
@@ -306,7 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new AuthError('Please accept both privacy policy and consent terms', 'POLICIES_NOT_ACCEPTED');
       }
 
-      // Firebase sign-in with timeout
       const signInPromise = signInWithGoogle();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new AuthError('Sign-in timeout', 'SIGNIN_TIMEOUT')), 30000)
@@ -318,7 +305,12 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
       }
 
-      // Get fresh token with retry
+      // Check if user is banned
+      const isBanned = await isBannedUser(user.uid);
+      if (isBanned) {
+        throw new AuthError('Your account is banned.', 'USER_BANNED');
+      }
+
       const idToken = await utils.retryOperation(async () => {
         const token = await user.getIdToken(true);
         if (!token) {
@@ -329,19 +321,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.log("User signed in:", user.displayName);
       
-      // Store token securely
       utils.setSecureToken(idToken);
       localStorage.setItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED, "true");
 
       uiManager.showMessage(`Welcome, ${user.displayName}!`, 'success');
       
-      // Check user existence with proper error handling
       uiManager.setLoading(loginBtn, true, 'Checking account...');
       
+      // Check admin status
+      const isAdminUser = await isAdmin(user.uid);
       const isExistingUser = await checkIfUserExists(user.uid);
       
       // Navigate based on user status
-      if (isExistingUser === true) {
+      if (isAdminUser) {
+        console.log("[Login] Admin user, redirecting to admin dashboard");
+        await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+      } else if (isExistingUser === true) {
         console.log("[Login] Existing user, redirecting to dashboard");
         await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
       } else if (isExistingUser === false) {
@@ -365,6 +360,9 @@ document.addEventListener("DOMContentLoaded", () => {
           case 'NO_TOKEN':
             userMessage = "Authentication failed. Please refresh the page and try again.";
             break;
+          case 'USER_BANNED':
+            userMessage = "Your account has been banned. Please contact support.";
+            break;
           default:
             userMessage = error.message || userMessage;
         }
@@ -384,7 +382,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Enhanced keyboard accessibility
   loginBtn.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && !loginBtn.disabled) {
       e.preventDefault();
@@ -392,9 +389,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Enhanced auth state observer with duplicate prevention
+  // Auth state observer
   observeUser(async (user) => {
-    // Prevent multiple simultaneous auth state changes
     if (authStateObserverActive) {
       console.log("[AuthState] Observer already active, skipping...");
       return;
@@ -406,12 +402,10 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("[AuthState] Auth state changed. User:", user ? user.email : "null");
       
       if (user) {
-        // Validate user object
         if (!user.uid || !user.email) {
           throw new AuthError('Invalid user object received', 'INVALID_USER_OBJECT');
         }
 
-        // Get fresh token with error handling
         const idToken = await utils.retryOperation(async () => {
           return await user.getIdToken(true);
         });
@@ -419,12 +413,28 @@ document.addEventListener("DOMContentLoaded", () => {
         utils.setSecureToken(idToken);
         console.log("👤 Logged in as:", user.email);
 
-        // Only check user existence and redirect if policies are accepted
         if (localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true") {
+          // Check if user is banned
+          const isBanned = await isBannedUser(user.uid);
+          if (isBanned) {
+            console.log("[AuthState] User is banned, redirecting to login");
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED);
+            uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
+            await utils.safeNavigate(CONFIG.PAGES.LOGIN);
+            return;
+          }
+
+          // Check admin status
+          const isAdminUser = await isAdmin(user.uid);
           const exists = await checkIfUserExists(user.uid);
           console.log("[AuthState] User exists?", exists);
           
-          if (exists === true) {
+          if (isAdminUser) {
+            alert("Admin login detected. Redirecting to admin dashboard.");
+            console.log("[AuthState] Redirecting to admin dashboard");
+            await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+          } else if (exists === true) {
             console.log("[AuthState] Redirecting to dashboard");
             await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
           } else if (exists === false) {
@@ -434,11 +444,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } else {
         console.log("🚪 Not logged in");
-        
-        // Clean up stored data
         localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
         
-        // Only redirect if not already on login page
         if (!window.location.pathname.endsWith("login.html")) {
           console.log("Redirecting to login page");
           await utils.safeNavigate(CONFIG.PAGES.LOGIN);
@@ -449,19 +456,19 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (error instanceof AuthError && error.code === 'NAVIGATION_ERROR') {
         uiManager.showMessage("Navigation error. Please refresh the page.", 'error');
+      } else if (error instanceof AuthError && error.code === 'USER_BANNED') {
+        uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
+        await utils.safeNavigate(CONFIG.PAGES.LOGIN);
       }
     } finally {
       authStateObserverActive = false;
     }
   });
 
-  // Enhanced cleanup and error recovery
   window.addEventListener('beforeunload', () => {
-    // Clean up any ongoing operations
     authStateObserverActive = false;
   });
 
-  // Global error handler for unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason);
     if (event.reason instanceof AuthError || event.reason instanceof NetworkError) {

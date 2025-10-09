@@ -1,4 +1,5 @@
-import { admin } from "../../firebaseAdmin.js";
+//from the root, path to this file is src/services/auth/server/middleware/verifyToken.js
+import  admin  from "../../../firebaseAdmin.js";
 
 /**
  * Middleware to verify Firebase ID token.

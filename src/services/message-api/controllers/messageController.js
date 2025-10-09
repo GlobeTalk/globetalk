@@ -1,7 +1,7 @@
 import { admin } from "../firebaseAdmin.js";
 
 // Penpal delay in milliseconds
-const PENPAL_DELAY = 60 * 5000; // 1 minute for demo
+const PENPAL_DELAY = 60 * 1000; // 1 minute for demo
 
 // Default pagination values
 const DEFAULT_PAGE_SIZE = 20;
@@ -101,10 +101,15 @@ export async function fetchMessages(req, res) {
     const now = Date.now();
     let docs = snapshot.docs;
 
-    // Only include messages that have passed the penpal delay
+    // Only apply penpal delay to messages received by the current user
     let messages = docs
       .map(doc => doc.data())
-      .filter(msg => now - msg.timestamp.toMillis() >= PENPAL_DELAY);
+      .filter(msg => {
+        // If the message was sent by the current user, always show it
+        if (msg.senderId === currentUserId) return true;
+        // Otherwise, apply the penpal delay
+        return now - msg.timestamp.toMillis() >= PENPAL_DELAY;
+      });
 
     let nextPageToken = null;
     if (messages.length > pageSize) {

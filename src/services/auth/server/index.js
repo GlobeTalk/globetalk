@@ -9,7 +9,7 @@ import express from "express";
 import cors from "cors";
 //import admin from "../../firebaseAdmin.js"; // Import initialized admin
 import userRouter from "./routes/users.js";
-import dotenv from "dotenv";
+//import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 

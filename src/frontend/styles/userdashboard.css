@@ -1,3 +1,4 @@
+<<<<<<< HEAD
  * {
             margin: 0;
             padding: 0;
@@ -298,3 +299,255 @@
         .section:nth-child(2) {
             animation-delay: 0.2s;
         }
+=======
+/* GlobeTalk User Dashboard Styles - aligned with profile.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    background-color: #ADD8E6;
+    font-family: 'Poppins', -apple-system, Roboto, Helvetica, sans-serif;
+}
+
+.min-h-screen {
+    min-height: 100vh;
+}
+
+nav {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 1.5rem 1rem;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    nav {
+        flex-direction: row;
+        padding: 1.5rem 3rem;
+        gap: 2rem;
+    }
+}
+
+nav a {
+    color: #000060;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    text-decoration: none;
+    transition: text-decoration 0.2s ease;
+}
+
+@media (min-width: 640px) {
+    nav a {
+        font-size: 1.5rem;
+    }
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.main-content {
+    padding: 0 16px;
+}
+
+@media (min-width: 640px) {
+    .main-content {
+        padding: 0 48px;
+    }
+}
+
+.globetalk-title {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    z-index: 10;
+    font-size: 24px;
+    font-weight: normal;
+    color: #000060;
+    text-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+    -webkit-text-stroke: 1px #0D1B2A;
+}
+
+@media (min-width: 640px) {
+    .globetalk-title {
+        font-size: 60px;
+    }
+}
+
+.dashboard-title-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+@media (min-width: 640px) {
+    .dashboard-title-container {
+        margin-bottom: 64px;
+    }
+}
+
+.dashboard-title {
+    color: #000040;
+    font-family: 'Poppins', sans-serif;
+    font-size: 36px;
+    font-weight: 400;
+    text-align: center;
+}
+
+@media (min-width: 640px) {
+    .dashboard-title {
+        font-size: 60px;
+    }
+}
+
+.section {
+    margin-bottom: 32px;
+}
+
+@media (min-width: 640px) {
+    .section {
+        margin-bottom: 64px;
+    }
+}
+
+.section-title {
+    color: #000060;
+    font-family: 'Poppins', sans-serif;
+    font-size: 30px;
+    font-weight: 400;
+    margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+    .section-title {
+        font-size: 36px;
+        margin-bottom: 32px;
+    }
+}
+
+.cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+@media (min-width: 640px) {
+    .cards-container {
+        flex-direction: row;
+        gap: 32px;
+    }
+}
+
+.pen-pal-card {
+    background-color: #FFFFFF;
+    border-radius: 24px;
+    padding: 24px;
+    width: 100%;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 640px) {
+    .pen-pal-card {
+        padding: 32px;
+        width: 320px;
+        min-height: 256px;
+    }
+}
+
+.pen-pal-card h4 {
+    color: #000000;
+    font-family: 'Inter', sans-serif;
+    font-size: 27px;
+    font-weight: 400;
+    margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+    .pen-pal-card h4 {
+        font-size: 30px;
+        margin-bottom: 24px;
+    }
+}
+
+.pen-pal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+@media (min-width: 640px) {
+    .pen-pal-info {
+        gap: 16px;
+    }
+}
+
+.pen-pal-info p {
+    color: #000000;
+    font-family: 'Inter', sans-serif;
+    font-size: 25px;
+    font-weight: 400;
+}
+
+@media (min-width: 640px) {
+    .pen-pal-info p {
+        font-size: 27px;
+    }
+}
+
+.conversations-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.conversation-item {
+    background-color: #e6dede;
+    border-radius: 12px;
+    padding: 16px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+@media (min-width: 640px) {
+    .conversation-item {
+        padding: 24px 32px;
+    }
+}
+
+.conversation-item h4 {
+    color: #000000;
+    font-family: 'Poppins', sans-serif;
+    font-size: 27px;
+    font-weight: 400;
+}
+
+@media (min-width: 640px) {
+    .conversation-item h4 {
+        font-size: 30px;
+    }
+}
+
+.conversation-time {
+    color: #000000;
+    font-family: 'Poppins', sans-serif;
+    font-size: 25px;
+    font-weight: 400;
+}
+
+@media (min-width: 640px) {
+    .conversation-time {
+        font-size: 27px;
+    }
+}
+>>>>>>> d2e47fdd73a650e9c6bd540c63b07e7295003512

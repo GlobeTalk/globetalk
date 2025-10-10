@@ -137,3 +137,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+src/services/moderation-api/serviceAccountkey.json
+src/services/moderation-api/serviceAccountkey.json
+
+*-firebase-adminsdk*.json
+
+# Environment variables
+.env

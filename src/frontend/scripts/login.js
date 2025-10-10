@@ -1,110 +1,478 @@
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCtAw-A06ZJvKXfbfpNu9D8rYurdgX0sVk",
-  authDomain: "globetalk-2508c.firebaseapp.com",
-  projectId: "globetalk-2508c",
-  storageBucket: "globetalk-2508c.firebasestorage.app",
-  messagingSenderId: "1046584624165",
-  appId: "1:1046584624165:web:6ed616da6aafdb52ddebcc"
+import { signInWithGoogle, observeUser } from "../../services/firebase.js";
+import { isBannedUser, isAdmin } from "../../services/admin.js"; 
+
+// Constants and Configuration
+const CONFIG = {
+  API_BASE_URL: '/api',
+  PAGES: {
+    LOGIN: '../../../pages/login.html',
+    DASHBOARD: '../../../pages/userdashboard.html',
+    ONBOARDING: '../../../pages/onboarding.html',
+    ADMIN_DASHBOARD: '../../../pages/admin.html' 
+  },
+  STORAGE_KEYS: {
+    ID_TOKEN: 'idToken',
+    POLICIES_ACCEPTED: 'policiesAccepted',
+    USER_PREFERENCES: 'userPreferences'
+  },
+  RETRY_CONFIG: {
+    MAX_ATTEMPTS: 3,
+    DELAY_MS: 1000,
+    BACKOFF_MULTIPLIER: 2
+  }
 };
 
-// Initialize Firebase
-let app;
-let auth;
-
-try {
-  // Check if Firebase is already initialized to avoid errors
-  app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-} catch (error) {
-  console.error("Firebase initialization error:", error);
-  app = firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-}
-
-// Google Sign-In function
-async function login() {
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    // Add scopes if needed
-    provider.addScope('profile');
-    provider.addScope('email');
-    
-    // Sign in with popup
-    const result = await auth.signInWithPopup(provider);
-    return result.user;
-  } catch (error) {
-    console.error("Login error:", error);
-    
-    // Handle specific errors
-    if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error('Login popup was closed before completion.');
-    } else if (error.code === 'auth/cancelled-popup-request') {
-      throw new Error('Login request was cancelled.');
-    } else {
-      throw new Error('Authentication failed. Please try again.');
-    }
+// Error handling with custom error types
+class AuthError extends Error {
+  constructor(message, code, details = {}) {
+    super(message);
+    this.name = 'AuthError';
+    this.code = code;
+    this.details = details;
   }
 }
 
-// Get DOM elements after page loads
-document.addEventListener('DOMContentLoaded', () => {
-  const loginBtn = document.getElementById('loginBtn');
-  const statusMessage = document.getElementById('statusMessage');
-  
-  loginBtn.addEventListener('click', async () => {
-    try {
-      loginBtn.disabled = true;
-      loginBtn.innerHTML = 'Signing in...';
-      
-      const user = await login();
-      
-      if (user) {
-        statusMessage.className = 'status success';
+class NetworkError extends Error {
+  constructor(message, status, details = {}) {
+    super(message);
+    this.name = 'NetworkError';
+    this.status = status;
+    this.details = details;
+  }
+}
 
-        // Redirect to onboarding page after successful login
-        setTimeout(() => {
-          window.location.href = '../pages/onboarding.html';
-        }, 1500);
+// Utility functions (unchanged except for safeNavigate)
+const utils = {
+  setSecureToken(token, expirationHours = 1) {
+    const expiration = Date.now() + (expirationHours * 60 * 60 * 1000);
+    const tokenData = { token, expiration };
+    localStorage.setItem(CONFIG.STORAGE_KEYS.ID_TOKEN, JSON.stringify(tokenData));
+  },
+
+  getSecureToken() {
+    try {
+      const tokenData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.ID_TOKEN));
+      if (!tokenData || Date.now() > tokenData.expiration) {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
+        return null;
+      }
+      return tokenData.token;
+    } catch {
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
+      return null;
+    }
+  },
+
+  sanitizeUserId(userId) {
+    if (!userId || typeof userId !== 'string') {
+      throw new AuthError('Invalid user ID', 'INVALID_USER_ID');
+    }
+    return userId.trim();
+  },
+
+  async safeNavigate(url, loadingElement = null) {
+    try {
+      if (loadingElement) {
+        loadingElement.style.display = 'block';
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (!url || !url.startsWith('../')) {
+        throw new Error('Invalid navigation URL');
+      }
+      
+      window.location.href = url;
+    } catch (error) {
+      console.error('Navigation error:', error);
+      if (loadingElement) {
+        loadingElement.style.display = 'none';
+      }
+      throw new AuthError('Navigation failed', 'NAVIGATION_ERROR', { url });
+    }
+  },
+
+  retryOperation: async function retryOperation(operation, maxAttempts = CONFIG.RETRY_CONFIG.MAX_ATTEMPTS) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
+        
+        if (attempt < maxAttempts) {
+          const delay = CONFIG.RETRY_CONFIG.DELAY_MS * Math.pow(CONFIG.RETRY_CONFIG.BACKOFF_MULTIPLIER, attempt - 1);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
+  },
+
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+};
+
+// User existence check (unchanged)
+async function checkIfUserExists(userId) {
+  try {
+    const sanitizedUserId = utils.sanitizeUserId(userId);
+    
+    return await utils.retryOperation(async () => {
+      const token = utils.getSecureToken();
+      if (!token) {
+        throw new AuthError('No valid authentication token', 'NO_TOKEN');
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/users/${sanitizedUserId}/exists`, {
+          method: 'GET',
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new NetworkError(
+            `Server error: ${response.status}`, 
+            response.status, 
+            errorData
+          );
+        }
+
+        const data = await response.json();
+        
+        if (typeof data.exists !== 'boolean') {
+          throw new AuthError('Invalid server response format', 'INVALID_RESPONSE');
+        }
+
+        return data.exists;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    });
+
+  } catch (error) {
+    console.error("Error checking user existence:", error);
+    
+    if (error instanceof AuthError || error instanceof NetworkError) {
+      throw error;
+    }
+    
+    throw new AuthError('Failed to check user existence', 'USER_CHECK_FAILED', { originalError: error.message });
+  }
+}
+
+// UI State Manager (unchanged)
+class UIStateManager {
+  constructor() {
+    this.loadingStates = new Set();
+  }
+
+  setLoading(element, isLoading, message = 'Loading...') {
+    if (isLoading) {
+      this.loadingStates.add(element);
+      element.disabled = true;
+      element.dataset.originalText = element.textContent;
+      element.textContent = message;
+      element.classList.add('loading');
+    } else {
+      this.loadingStates.delete(element);
+      element.disabled = false;
+      element.textContent = element.dataset.originalText || element.textContent;
+      element.classList.remove('loading');
+    }
+  }
+
+  showMessage(message, type = 'info', duration = 5000) {
+    let messageEl = document.getElementById('auth-message');
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.id = 'auth-message';
+      messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        max-width: 300px;
+        word-wrap: break-word;
+      `;
+      document.body.appendChild(messageEl);
+    }
+
+    const colors = {
+      success: '#10b981',
+      error: '#ef4444',
+      warning: '#f59e0b',
+      info: '#3b82f6'
+    };
+
+    messageEl.style.backgroundColor = colors[type] || colors.info;
+    messageEl.textContent = message;
+    messageEl.style.display = 'block';
+
+    setTimeout(() => {
+      if (messageEl) {
+        messageEl.style.display = 'none';
+      }
+    }, duration);
+  }
+}
+
+// Main application logic
+document.addEventListener("DOMContentLoaded", () => {
+  const loginBtn = document.getElementById("loginBtn");
+  const privacyCheckbox = document.getElementById("privacy");
+  const consentCheckbox = document.getElementById("consent");
+  
+  if (!loginBtn || !privacyCheckbox || !consentCheckbox) {
+    console.error('Required DOM elements not found');
+    return;
+  }
+
+  const uiManager = new UIStateManager();
+  let authStateObserverActive = false;
+
+  const updateButtonState = utils.debounce(() => {
+    try {
+      const returningUser = localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true";
+      const currentlyAccepted = privacyCheckbox.checked && consentCheckbox.checked;
+      
+      loginBtn.disabled = !(returningUser || currentlyAccepted);
+      
+      if (loginBtn.disabled && !returningUser) {
+        loginBtn.title = "Please accept both privacy policy and consent terms";
       } else {
-        statusMessage.textContent = 'Login failed. Please try again.';
-        statusMessage.className = 'status error';
-        resetLoginButton();
+        loginBtn.title = "Sign in with Google";
       }
     } catch (error) {
-      console.error("Login error:", error);
-      statusMessage.textContent = `Error: ${error.message}`;
-      statusMessage.className = 'status error';
-      resetLoginButton();
+      console.error('Error updating button state:', error);
+    }
+  }, 100);
+
+  updateButtonState();
+  privacyCheckbox.addEventListener("change", updateButtonState);
+  consentCheckbox.addEventListener("change", updateButtonState);
+
+  // Google Login Flow
+  loginBtn.addEventListener("click", async (event) => {
+    event.preventDefault();
+    
+    if (loginBtn.disabled) return;
+
+    uiManager.setLoading(loginBtn, true, 'Signing in...');
+
+    try {
+      const policiesAccepted = privacyCheckbox.checked && consentCheckbox.checked;
+      const storedPoliciesAccepted = localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true";
+      
+      if (!storedPoliciesAccepted && !policiesAccepted) {
+        throw new AuthError('Please accept both privacy policy and consent terms', 'POLICIES_NOT_ACCEPTED');
+      }
+
+      const signInPromise = signInWithGoogle();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new AuthError('Sign-in timeout', 'SIGNIN_TIMEOUT')), 30000)
+      );
+      
+      const { user } = await Promise.race([signInPromise, timeoutPromise]);
+      
+      if (!user || !user.uid) {
+        throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
+      }
+
+      // Check if user is banned
+      const isBanned = await isBannedUser(user.uid);
+      if (isBanned) {
+        throw new AuthError('Your account is banned.', 'USER_BANNED');
+      }
+
+      const idToken = await utils.retryOperation(async () => {
+        const token = await user.getIdToken(true);
+        if (!token) {
+          throw new AuthError('Failed to get authentication token', 'TOKEN_FAILED');
+        }
+        return token;
+      });
+
+      console.log("User signed in:", user.displayName);
+      
+      utils.setSecureToken(idToken);
+      localStorage.setItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED, "true");
+
+      uiManager.showMessage(`Welcome, ${user.displayName}!`, 'success');
+      
+      uiManager.setLoading(loginBtn, true, 'Checking account...');
+      
+      // Check admin status
+      const isAdminUser = await isAdmin(user.uid);
+      const isExistingUser = await checkIfUserExists(user.uid);
+      
+      // Navigate based on user status
+      if (isAdminUser) {
+        console.log("[Login] Admin user, redirecting to admin dashboard");
+        await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+      } else if (isExistingUser === true) {
+        console.log("[Login] Existing user, redirecting to dashboard");
+        await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
+      } else if (isExistingUser === false) {
+        console.log("[Login] New user, redirecting to onboarding");
+        await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+      }
+
+    } catch (error) {
+      console.error("❌ Login failed:", error);
+      
+      let userMessage = "Login failed. Please try again.";
+      
+      if (error instanceof AuthError) {
+        switch (error.code) {
+          case 'POLICIES_NOT_ACCEPTED':
+            userMessage = "Please accept both privacy policy and consent terms.";
+            break;
+          case 'SIGNIN_TIMEOUT':
+            userMessage = "Sign-in timed out. Please check your connection and try again.";
+            break;
+          case 'NO_TOKEN':
+            userMessage = "Authentication failed. Please refresh the page and try again.";
+            break;
+          case 'USER_BANNED':
+            userMessage = "Your account has been banned. Please contact support.";
+            break;
+          default:
+            userMessage = error.message || userMessage;
+        }
+      } else if (error instanceof NetworkError) {
+        if (error.status >= 500) {
+          userMessage = "Server error. Please try again later.";
+        } else if (error.status === 401) {
+          userMessage = "Authentication failed. Please refresh the page and try again.";
+        } else {
+          userMessage = "Network error. Please check your connection.";
+        }
+      }
+      
+      uiManager.showMessage(userMessage, 'error');
+    } finally {
+      uiManager.setLoading(loginBtn, false);
     }
   });
-  
-  function resetLoginButton() {
-    loginBtn.disabled = false;
-    loginBtn.innerHTML = `
-      <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      Sign in with Google
-    `;
-  }
+
+  loginBtn.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && !loginBtn.disabled) {
+      e.preventDefault();
+      loginBtn.click();
+    }
+  });
+
+  // Auth state observer
+  observeUser(async (user) => {
+    if (authStateObserverActive) {
+      console.log("[AuthState] Observer already active, skipping...");
+      return;
+    }
+    
+    authStateObserverActive = true;
+    
+    try {
+      console.log("[AuthState] Auth state changed. User:", user ? user.email : "null");
+      
+      if (user) {
+        if (!user.uid || !user.email) {
+          throw new AuthError('Invalid user object received', 'INVALID_USER_OBJECT');
+        }
+
+        const idToken = await utils.retryOperation(async () => {
+          return await user.getIdToken(true);
+        });
+        
+        utils.setSecureToken(idToken);
+        console.log("👤 Logged in as:", user.email);
+
+        if (localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true") {
+          // Check if user is banned
+          const isBanned = await isBannedUser(user.uid);
+          if (isBanned) {
+            console.log("[AuthState] User is banned, redirecting to login");
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED);
+            uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
+            await utils.safeNavigate(CONFIG.PAGES.LOGIN);
+            return;
+          }
+
+          // Check admin status
+          const isAdminUser = await isAdmin(user.uid);
+          const exists = await checkIfUserExists(user.uid);
+          console.log("[AuthState] User exists?", exists);
+          
+          if (isAdminUser) {
+            alert("Admin login detected. Redirecting to admin dashboard.");
+            console.log("[AuthState] Redirecting to admin dashboard");
+            await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+          } else if (exists === true) {
+            console.log("[AuthState] Redirecting to dashboard");
+            await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
+          } else if (exists === false) {
+            console.log("[AuthState] Redirecting to onboarding");
+            await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+          }
+        }
+      } else {
+        console.log("🚪 Not logged in");
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
+        
+        if (!window.location.pathname.endsWith("login.html")) {
+          console.log("Redirecting to login page");
+          await utils.safeNavigate(CONFIG.PAGES.LOGIN);
+        }
+      }
+    } catch (error) {
+      console.error("[AuthState] Error in auth state observer:", error);
+      
+      if (error instanceof AuthError && error.code === 'NAVIGATION_ERROR') {
+        uiManager.showMessage("Navigation error. Please refresh the page.", 'error');
+      } else if (error instanceof AuthError && error.code === 'USER_BANNED') {
+        uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
+        await utils.safeNavigate(CONFIG.PAGES.LOGIN);
+      }
+    } finally {
+      authStateObserverActive = false;
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    authStateObserverActive = false;
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    if (event.reason instanceof AuthError || event.reason instanceof NetworkError) {
+      uiManager.showMessage('An unexpected error occurred. Please refresh the page.', 'error');
+    }
+  });
 });
-
-// Additional auth functions
-function getCurrentUser() {
-  return auth.currentUser;
-}
-
-function logout() {
-  return auth.signOut();
-}
-
-function onAuthStateChanged(callback) {
-  return auth.onAuthStateChanged(callback);
-}
-
-// Export functions for testing or other modules
-export { login, getCurrentUser, logout, onAuthStateChanged };

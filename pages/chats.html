@@ -58,6 +58,17 @@
     let ID_TOKEN = null;
     let CURRENT_UID = null;
     let userCache = {};
+      // Get targetUser param from URL
+      function getQueryParam(param) {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          return urlParams.get(param);
+        } catch (error) {
+          console.error('Error parsing query parameters:', error);
+          return null;
+        }
+      }
+      const TARGET_USER_ID = getQueryParam('targetUser');
 
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
@@ -168,6 +179,20 @@
         await Promise.all(userIds.map(uid => getUsername(uid)));
         
         await renderChatList();
+
+          // If targetUser param is present, auto-select or create chat
+          if (TARGET_USER_ID && CURRENT_UID) {
+            let chat = chats.find(c => c.participants.includes(TARGET_USER_ID));
+            if (chat) {
+              await selectChat(chat);
+            } else {
+              // No chat exists, set up for new message
+              selectedChat = null;
+              chatHeader.textContent = await getUsername(TARGET_USER_ID);
+              messages = [];
+              messagesDiv.innerHTML = '<div class="no-messages">No messages yet. Start the conversation!</div>';
+            }
+          }
       } catch (e) {
         console.error('Error loading chats:', e);
         showError(chatList, 'Failed to load chats. Please try again.');
@@ -208,21 +233,30 @@
     }
 
     async function sendMessage(text) {
-      if (!selectedChat) return;
-      
-      const recipientId = getOtherUserId(selectedChat.participants);
+      let recipientId;
+      if (selectedChat) {
+        recipientId = getOtherUserId(selectedChat.participants);
+      } else if (TARGET_USER_ID) {
+        recipientId = TARGET_USER_ID;
+      } else {
+        alert("No recipient selected.");
+        return;
+      }
       const submitBtn = chatForm.querySelector("button");
-      
       try {
         submitBtn.disabled = true;
         submitBtn.textContent = "Sending...";
-        
         await retryOperation(() => apiFetch(`${API_BASE}/send`, {
           method: "POST",
           body: JSON.stringify({ recipientId, text })
         }));
-        
-        await loadMessages(selectedChat);
+        // After sending, reload chats and select the chat with that user
+        await loadChats();
+        // If chat now exists, select it
+        let chat = chats.find(c => c.participants.includes(recipientId));
+        if (chat) {
+          await selectChat(chat);
+        }
         messageInput.value = "";
         messageInput.style.height = 'auto';
       } catch (e) {

@@ -76,8 +76,10 @@ import { onAuthStateChanged } from "firebase/auth";
                 chatBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     if (userId) {
+
                         window.location.href = `chats.html?targetUser=${encodeURIComponent(userId)}`;
                     } else {
+        
                         window.location.href = 'chats.html';
                     }
                 });

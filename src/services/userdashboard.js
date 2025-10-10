@@ -2,31 +2,6 @@ import { db } from './firebase.js';
 import { doc, getDoc, query, collection, where, orderBy, getDocs, documentId } from "firebase/firestore";
 
 
-
-// Update specific profile fields
-export async function getActiveConversations(username) {
-  const q = query(
-    collection(db, "chats"),
-    where("participants", "array-contains", username),
-    orderBy("lastUpdated", "desc")
-  );
-  const snap = await getDocs(q);
-
-  return snap.docs.map(doc => {
-    const data = doc.data();
-    const otherUser = data.participants.find(p => p !== username);
-    return {
-      otherUser,
-      lastUpdated: data.lastUpdated.toDate()
-    };
-  });
-}
-
-export async function getUsername(userId) {
-  const userDoc = await getDoc(doc(db, "users", userId));
-  return userDoc.exists() ? userDoc.data().username : null;
-}
-
 export async function getPenPalSuggestions(userid) {
   // Get current user's hobbies
   const userDoc = await getDoc(doc(db, "users", userid));

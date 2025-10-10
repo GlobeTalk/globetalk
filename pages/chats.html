@@ -85,6 +85,17 @@
         }
       }
       const TARGET_USER_ID = getQueryParam('targetUser');
+      // Get targetUser param from URL
+      function getQueryParam(param) {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          return urlParams.get(param);
+        } catch (error) {
+          console.error('Error parsing query parameters:', error);
+          return null;
+        }
+      }
+      const TARGET_USER_ID = getQueryParam('targetUser');
 
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
@@ -187,29 +198,20 @@
         chats = pageToken ? chats.concat(data.chats || []) : (data.chats || []);
         chatsNextPage = data.nextPageToken;
         await renderChatList();
-        // If targetUser param is present, auto-select or create chat
-        if (TARGET_USER_ID && CURRENT_UID) {
-          let chat = chats.find(c => c.participants.some(p => p.uid === TARGET_USER_ID));
-          if (chat) {
-            await selectChat(chat);
-          } else {
-            // No chat exists, set up for new message
-            selectedChat = null;
-            // Get targetUsername from query param
-            const TARGET_USERNAME = getQueryParam('targetUsername');
-            chatHeader.innerHTML = `
-              <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
-                  <circle cx="16" cy="16" r="16" fill="#e0e7ff"/>
-                  <ellipse cx="16" cy="13" rx="7" ry="7" fill="#6366f1"/>
-                  <ellipse cx="16" cy="25" rx="10" ry="6" fill="#a5b4fc"/>
-                </svg>
-              </span>
-              <span style="vertical-align:middle;">${escapeHtml(TARGET_USERNAME || TARGET_USER_ID)}</span>`;
-            messages = [];
-            messagesDiv.innerHTML = '<div class="no-messages">No messages yet. Start the conversation!</div>';
+
+          // If targetUser param is present, auto-select or create chat
+          if (TARGET_USER_ID && CURRENT_UID) {
+            let chat = chats.find(c => c.participants.includes(TARGET_USER_ID));
+            if (chat) {
+              await selectChat(chat);
+            } else {
+              // No chat exists, set up for new message
+              selectedChat = null;
+              chatHeader.textContent = await getUsername(TARGET_USER_ID);
+              messages = [];
+              messagesDiv.innerHTML = '<div class="no-messages">No messages yet. Start the conversation!</div>';
+            }
           }
-        }
       } catch (e) {
         console.error('Error loading chats:', e);
         showError(chatList, 'Failed to load chats. Please try again.');
@@ -238,83 +240,30 @@
     }
 
     async function sendMessage(text) {
-      if (!selectedChat) {
-        // No chat exists yet, so create it first
-        const targetUserId = getQueryParam('targetUser');
-        const targetUsername = getQueryParam('targetUsername');
-        if (!targetUserId || !targetUsername) {
-          alert("No chat selected and no target user.");
-          return;
-        }
-        sendButton.disabled = true;
-        sendButton.textContent = "Creating chat...";
-        try {
-          // Fetch current user's username
-          let myUsername = null;
-          try {
-            // Use /api/profile for current user (no userId param)
-            const res = await fetch(`/api/profile`, { headers: { 'Authorization': `Bearer ${ID_TOKEN}` } });
-            if (res.ok) {
-              const data = await res.json();
-              myUsername = data.username || null;
-            } else {
-              console.warn('Could not fetch current user username, status:', res.status);
-            }
-          } catch (e) { console.warn('Could not fetch current user username', e); }
-          if (!myUsername) {
-            alert('Could not fetch your username.');
-            sendButton.disabled = false;
-            sendButton.textContent = "Send";
-            return;
-          }
-          // Create chat
-          const chatRes = await retryOperation(() => apiFetch(`${API_BASE}/chats`, {
-            method: "POST",
-            body: JSON.stringify({
-              participants: [
-                { uid: CURRENT_UID, username: myUsername },
-                { uid: targetUserId, username: targetUsername }
-              ]
-            })
-          }));
-          // Use chatId returned from API
-          const newChatId = chatRes.chatId;
-          if (!newChatId) throw new Error("Chat creation failed: No chatId returned");
-          // Fetch the new chat details
-          let chat = null;
-          try {
-            const chatDetailRes = await retryOperation(() => apiFetch(`${API_BASE}/chats/${newChatId}`));
-            if (chatDetailRes && chatDetailRes.chat) {
-              chat = { chatId: newChatId, ...chatDetailRes.chat };
-            }
-          } catch (e) {
-            console.warn('Could not fetch new chat details', e);
-          }
-          if (!chat) {
-            // fallback: reload all chats and try to find it
-            await loadChats();
-            chat = chats.find(c => c.chatId === newChatId);
-            if (!chat) throw new Error("Chat creation failed: Chat not found");
-          }
-          selectedChat = chat;
-          await sendMessage(text); // Recursively send message now that chat exists
-        } catch (e) {
-          console.error('Error creating chat:', e);
-          alert("Failed to create chat. Please try again.");
-        } finally {
-          sendButton.disabled = false;
-          sendButton.textContent = "Send";
-        }
+      let recipientId;
+      if (selectedChat) {
+        recipientId = getOtherUserId(selectedChat.participants);
+      } else if (TARGET_USER_ID) {
+        recipientId = TARGET_USER_ID;
+      } else {
+        alert("No recipient selected.");
         return;
       }
+      const submitBtn = chatForm.querySelector("button");
       try {
-        sendButton.disabled = true;
-        sendButton.textContent = "Sending...";
-        await retryOperation(() => apiFetch(`${API_BASE}/chats/${selectedChat.chatId}/messages`, {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Sending...";
+        await retryOperation(() => apiFetch(`${API_BASE}/send`, {
           method: "POST",
           body: JSON.stringify({ text })
         }));
-        await loadMessages(selectedChat);
+        // After sending, reload chats and select the chat with that user
+        await loadChats();
+        // If chat now exists, select it
+        let chat = chats.find(c => c.participants.includes(recipientId));
+        if (chat) {
+          await selectChat(chat);
+        }
         messageInput.value = "";
         messageInput.style.height = 'auto';
         sendButton.disabled = true;

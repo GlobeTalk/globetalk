@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GlobeTalk - My Chats</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/frontend/styles/chat.css">
+  
+</head>
+<body>
+  <nav>
+    <span class="nav-link" style="font-family: 'Poppins', sans-serif; font-weight: 600; color: #667eea;">GlobeTalk</span>
+    <a href="userdashboard.html" class="nav-link">Home</a>
+    <a href="findPal.html" class="nav-link">Find Pen Pal</a>
+  </nav>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="sidebar-header">My Chats</div>
+      <div class="chat-list" id="chatList">
+        <div class="loading">Loading chats...</div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="chat-header" id="chatHeader">Select a chat to start messaging</div>
+      <div class="messages" id="messages">
+        <div class="no-messages">Select a conversation to view messages</div>
+      </div>
+      <form class="chat-input" id="chatForm" autocomplete="off">
+        <textarea id="messageInput" placeholder="Type your message..." required rows="1"></textarea>
+        <button type="submit">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script type="module">
+    import { observeUser } from "../src/services/firebase.js";
+
+    const API_BASE = "/api/chat";
+    const chatList = document.getElementById("chatList");
+    const messagesDiv = document.getElementById("messages");
+    const chatHeader = document.getElementById("chatHeader");
+    const chatForm = document.getElementById("chatForm");
+    const messageInput = document.getElementById("messageInput");
+    const backBtn = document.getElementById("backBtn");
+
+    const MAX_RETRY_ATTEMPTS = 3;
+    const RETRY_DELAY = 1000;
+
+    let chats = [];
+    let selectedChat = null;
+    let messages = [];
+    let messagesNextPage = null;
+    let chatsNextPage = null;
+    let loadingChats = false;
+    let loadingMessages = false;
+    let ID_TOKEN = null;
+    let CURRENT_UID = null;
+    let userCache = {};
+
+    // Auto-resize textarea
+    messageInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    // Back button handler
+    backBtn.addEventListener('click', () => {
+      window.location.href = 'userdashboard.html';
+    });
+
+    // Utility Functions
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatTime(ts) {
+      if (!ts) return "";
+      try {
+        const d = typeof ts === "number" ? new Date(ts) : ts.toDate ? ts.toDate() : new Date(ts);
+        if (isNaN(d.getTime())) return "";
+        
+        const now = new Date();
+        const diffMs = now - d;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHr = Math.floor(diffMin / 60);
+        
+        if (diffHr < 24) {
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } catch (error) {
+        console.error('Error formatting time:', error);
+        return "";
+      }
+    }
+
+    function getOtherUserId(participants) {
+      return participants?.find(uid => uid !== CURRENT_UID) || "Unknown";
+    }
+
+    async function retryOperation(operation, attempts = MAX_RETRY_ATTEMPTS) {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await operation();
+        } catch (error) {
+          if (i === attempts - 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+        }
+      }
+    }
+
+    async function getUsername(userId) {
+      if (!userId) return "Unknown";
+      if (userCache[userId]) return userCache[userId];
+      
+      try {
+        const res = await fetch(`/api/user/profile/${userId}`);
+        if (!res.ok) throw new Error("Not found");
+        const data = await res.json();
+        userCache[userId] = data.username || userId;
+        return userCache[userId];
+      } catch {
+        userCache[userId] = userId;
+        return userId;
+      }
+    }
+
+    async function apiFetch(url, opts = {}) {
+      opts.headers = opts.headers || {};
+      opts.headers["Authorization"] = `Bearer ${ID_TOKEN}`;
+      opts.headers["Content-Type"] = "application/json";
+      const res = await fetch(url, opts);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || `Request failed with status ${res.status}`);
+      }
+      return res.json();
+    }
+
+    function showError(container, message, showRetry = true) {
+      container.innerHTML = `
+        <div class="error-message">
+          ${escapeHtml(message)}
+          ${showRetry ? '<button class="retry-btn" onclick="location.reload()">Retry</button>' : ''}
+        </div>
+      `;
+    }
+
+    async function loadChats(pageToken = null) {
+      if (loadingChats) return;
+      loadingChats = true;
+      
+      let url = `${API_BASE}/latest?pageSize=20`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      
+      try {
+        const data = await retryOperation(() => apiFetch(url));
+        
+        if (pageToken) {
+          chats = chats.concat(data.chats || []);
+        } else {
+          chats = data.chats || [];
+        }
+        chatsNextPage = data.nextPageToken;
+        
+        const userIds = Array.from(new Set(chats.map(c => getOtherUserId(c.participants))));
+        await Promise.all(userIds.map(uid => getUsername(uid)));
+        
+        await renderChatList();
+      } catch (e) {
+        console.error('Error loading chats:', e);
+        showError(chatList, 'Failed to load chats. Please try again.');
+      } finally {
+        loadingChats = false;
+      }
+    }
+
+    async function loadMessages(chat, pageToken = null) {
+      if (!chat) return;
+      if (loadingMessages) return;
+      loadingMessages = true;
+      
+      const otherUserId = getOtherUserId(chat.participants);
+      let url = `${API_BASE}/fetch/${otherUserId}?pageSize=20`;
+      if (pageToken) url += `&pageToken=${pageToken}`;
+      
+      try {
+        const data = await retryOperation(() => apiFetch(url));
+        
+        if (pageToken) {
+          messages = (data.messages || []).concat(messages);
+        } else {
+          messages = data.messages || [];
+        }
+        messagesNextPage = data.nextPageToken;
+        
+        const senderIds = Array.from(new Set(messages.map(m => m.senderId)));
+        await Promise.all(senderIds.map(uid => getUsername(uid)));
+        
+        await renderMessages();
+      } catch (e) {
+        console.error('Error loading messages:', e);
+        showError(messagesDiv, 'Failed to load messages. Please try again.');
+      } finally {
+        loadingMessages = false;
+      }
+    }
+
+    async function sendMessage(text) {
+      if (!selectedChat) return;
+      
+      const recipientId = getOtherUserId(selectedChat.participants);
+      const submitBtn = chatForm.querySelector("button");
+      
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Sending...";
+        
+        await retryOperation(() => apiFetch(`${API_BASE}/send`, {
+          method: "POST",
+          body: JSON.stringify({ recipientId, text })
+        }));
+        
+        await loadMessages(selectedChat);
+        messageInput.value = "";
+        messageInput.style.height = 'auto';
+      } catch (e) {
+        console.error('Error sending message:', e);
+        alert("Failed to send message. Please try again.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Send";
+      }
+    }
+
+    async function selectChat(chat) {
+      selectedChat = chat;
+      messages = [];
+      messagesNextPage = null;
+      
+      const otherUserId = getOtherUserId(chat.participants);
+      const username = await getUsername(otherUserId);
+      chatHeader.textContent = username;
+      
+      await renderChatList();
+      await loadMessages(chat);
+    }
+
+    async function renderChatList() {
+      if (!chats.length) {
+        chatList.innerHTML = '<div class="no-chat">No chats yet. Start a conversation from your dashboard!</div>';
+        return;
+      }
+      
+      chatList.innerHTML = "";
+      
+      for (const chat of chats) {
+        const otherUserId = getOtherUserId(chat.participants);
+        const otherUser = await getUsername(otherUserId);
+        const preview = chat.lastMessage?.text || "No messages yet";
+        
+        const div = document.createElement("div");
+        div.className = "chat-item" + (selectedChat?.chatId === chat.chatId ? " active" : "");
+        div.innerHTML = `
+          <div class="chat-user">${escapeHtml(otherUser)}</div>
+          <div class="chat-preview">${escapeHtml(preview)}</div>
+        `;
+        
+        div.onclick = () => {
+          if (!selectedChat || selectedChat.chatId !== chat.chatId) {
+            selectChat(chat);
+          }
+        };
+        
+        chatList.appendChild(div);
+      }
+      
+      chatList.onscroll = () => {
+        if (chatList.scrollTop + chatList.clientHeight >= chatList.scrollHeight - 10 && chatsNextPage && !loadingChats) {
+          loadChats(chatsNextPage);
+        }
+      };
+    }
+
+    async function renderMessages() {
+      if (!messages.length) {
+        messagesDiv.innerHTML = '<div class="no-messages">No messages yet. Start the conversation!</div>';
+        return;
+      }
+      
+      const shouldScrollToBottom = messagesDiv.scrollTop + messagesDiv.clientHeight >= messagesDiv.scrollHeight - 100;
+      
+      messagesDiv.innerHTML = "";
+      
+      for (const msg of messages) {
+        const senderName = await getUsername(msg.senderId);
+        const div = document.createElement("div");
+        div.className = "message" + (msg.senderId === CURRENT_UID ? " me" : "");
+        div.innerHTML = `
+          <div class="message-sender">${escapeHtml(senderName)}</div>
+          <div class="message-text">${escapeHtml(msg.text)}</div>
+          <div class="timestamp">${formatTime(msg.timestamp)}</div>
+        `;
+        messagesDiv.appendChild(div);
+      }
+      
+      if (shouldScrollToBottom) {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    }
+
+    chatForm.onsubmit = async e => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+      if (!text) return;
+      await sendMessage(text);
+    };
+
+    messagesDiv.onscroll = () => {
+      if (messagesDiv.scrollTop < 40 && messagesNextPage && !loadingMessages) {
+        const oldHeight = messagesDiv.scrollHeight;
+        loadMessages(selectedChat, messagesNextPage).then(() => {
+          const newHeight = messagesDiv.scrollHeight;
+          messagesDiv.scrollTop = newHeight - oldHeight;
+        });
+      }
+    };
+
+    async function startChatApp(user) {
+      CURRENT_UID = user.uid;
+      try {
+        const token = await user.getIdToken();
+        ID_TOKEN = token;
+        await loadChats();
+      } catch (error) {
+        console.error('Error starting chat app:', error);
+        showError(chatList, 'Failed to initialize chat. Please refresh the page.');
+      }
+    }
+
+    observeUser(async user => {
+      if (!user) {
+        alert("You must be logged in to use chat. Redirecting to login...");
+        window.location.href = "/pages/login.html";
+      } else {
+        await startChatApp(user);
+      }
+    });
+  </script>
+</body>
+</html>

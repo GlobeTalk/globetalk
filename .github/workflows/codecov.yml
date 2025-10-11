@@ -1,6 +1,9 @@
 name: CI with Codecov
 
 on:
+  push:
+    branches:
+      - testing
   pull_request:
     branches:
       - testing   

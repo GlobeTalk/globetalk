@@ -69,11 +69,11 @@ describe('GlobeTalk Landing Page', () => {
 
   
   // How It Works Section
-  
   it('should display How It Works section with steps', () => {
     cy.get('#how-it-works').should('exist');
-    cy.get('.steps-container .step').should('have.length', 3);
+    cy.get('.steps-container .step-card').should('have.length', 3);
   });
+
 
   
   // Footer

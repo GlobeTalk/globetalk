@@ -1,7 +1,8 @@
 import { admin } from "../firebaseAdmin.js";
+import { encryptMessage, decryptMessage } from "./messageEncryptionController.js";
 
 // Penpal delay in milliseconds
-const PENPAL_DELAY = 60 * 5000; // 1 minute for demo
+const PENPAL_DELAY = 60 * 1000; // 1 minute for demo
 
 // Default pagination values
 const DEFAULT_PAGE_SIZE = 20;
@@ -46,12 +47,14 @@ export async function sendMessage(req, res) {
   try {
     const chatDoc = await getOrCreateChat(senderId, recipientId);
 
+    // Encrypt the message text before storing
+    const encryptedText = encryptMessage(text);
     const message = {
       senderId,
-      text,
+      text: encryptedText,
       timestamp: new Date(),
     };
-    console.log(senderId, "sending message to", recipientId, "in chat", chatDoc.id, ":", text);
+    console.log(senderId, "sending encrypted message to", recipientId, "in chat", chatDoc.id, ":", encryptedText);
     await db.collection("chats")
       .doc(chatDoc.id)
       .collection("messages")
@@ -62,7 +65,8 @@ export async function sendMessage(req, res) {
       lastUpdated: new Date(),
     });
 
-    res.json({ success: true, message, chatId: chatDoc.id });
+    // Return the original text in the response for sender
+    res.json({ success: true, message: { ...message, text }, chatId: chatDoc.id });
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ error: "Failed to send message" });
@@ -101,10 +105,19 @@ export async function fetchMessages(req, res) {
     const now = Date.now();
     let docs = snapshot.docs;
 
-    // Only include messages that have passed the penpal delay
+    // Only apply penpal delay to messages received by the current user
     let messages = docs
-      .map(doc => doc.data())
-      .filter(msg => now - msg.timestamp.toMillis() >= PENPAL_DELAY);
+      .map(doc => {
+        const msg = doc.data();
+        // Decrypt the message text after fetching
+        return { ...msg, text: decryptMessage(msg.text) };
+      })
+      .filter(msg => {
+        // If the message was sent by the current user, always show it
+        if (msg.senderId === currentUserId) return true;
+        // Otherwise, apply the penpal delay
+        return now - msg.timestamp.toMillis() >= PENPAL_DELAY;
+      });
 
     let nextPageToken = null;
     if (messages.length > pageSize) {
@@ -170,8 +183,10 @@ export async function fetchLatestChats(req, res) {
           .orderBy("timestamp", "desc")
           .limit(1)
           .get();
-        const lastMessage = messagesSnap.docs.length > 0 ? messagesSnap.docs[0].data() : null;
+        let lastMessage = messagesSnap.docs.length > 0 ? messagesSnap.docs[0].data() : null;
         if (lastMessage) {
+          // Decrypt the last message text
+          lastMessage = { ...lastMessage, text: decryptMessage(lastMessage.text) };
           console.log(`[fetchLatestChats] Last message for chat ${doc.id}:`, lastMessage);
         } else {
           console.log(`[fetchLatestChats] No messages for chat ${doc.id}`);

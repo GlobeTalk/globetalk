@@ -15,7 +15,7 @@ export async function getPenPalSuggestions(userid) {
     where(documentId(),"!=", userid)
   );
   const snap = await getDocs(q);
-  // Filter users with at least one hobby in common, limit to 5
+  // Filter users with at least one hobby in common, limit to 6
   return snap.docs
     .map(doc => ({
       _docId: doc.id,
@@ -26,5 +26,5 @@ export async function getPenPalSuggestions(userid) {
       if (!Array.isArray(hobbies) || hobbies.length === 0) return false;
       return hobbies.some(hobby => currentHobbies.includes(hobby));
     })
-    .slice(0, 5);
+    .slice(0, 6);
 }

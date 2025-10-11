@@ -328,11 +328,10 @@
       messagesDiv.innerHTML = "";
       
       for (const msg of messages) {
-        const senderName = await getUsername(msg.senderId);
+        //const senderName = await getUsername(msg.senderId);
         const div = document.createElement("div");
         div.className = "message" + (msg.senderId === CURRENT_UID ? " me" : "");
         div.innerHTML = `
-          <div class="message-sender">${escapeHtml(senderName)}</div>
           <div class="message-text">${escapeHtml(msg.text)}</div>
           <div class="timestamp">${formatTime(msg.timestamp)}</div>
         `;

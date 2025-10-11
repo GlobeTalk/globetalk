@@ -1,6 +1,12 @@
 import { admin } from "../firebaseAdmin.js";
 import { encryptMessage, decryptMessage } from "./messageEncryptionController.js";
 
+// Penpal delay in milliseconds
+const PENPAL_DELAY = 60 * 1000; // 1 minute for demo
+
+// Default pagination values
+const DEFAULT_PAGE_SIZE = 20;
+
 const db = admin.firestore();
 const DEFAULT_PAGE_SIZE = 20;
 const PENPAL_DELAY = 60 * 1000; // 1 minute
@@ -66,20 +72,29 @@ export async function sendMessage(req, res) {
   const senderId = req.user.uid;
   if (!text) return res.status(400).json({ success: false, error: "Text is required" });
   try {
-    const chatDoc = await db.collection("chats").doc(chatId).get();
-    if (!chatDoc.exists) return res.status(404).json({ success: false, error: "Chat not found" });
+    const chatDoc = await getOrCreateChat(senderId, recipientId);
+
+    // Encrypt the message text before storing
     const encryptedText = encryptMessage(text);
     const message = {
       senderId,
       text: encryptedText,
+      text: encryptedText,
       timestamp: new Date(),
     };
-    await db.collection("chats").doc(chatId).collection("messages").add(message);
-    await db.collection("chats").doc(chatId).update({
-      lastMessage: { senderId, text: encryptedText, timestamp: new Date(), status: 'unread' },
+    console.log(senderId, "sending encrypted message to", recipientId, "in chat", chatDoc.id, ":", encryptedText);
+    await db.collection("chats")
+      .doc(chatDoc.id)
+      .collection("messages")
+      .add(message);
+
+    // Update lastUpdated for chat
+    await db.collection("chats").doc(chatDoc.id).update({
       lastUpdated: new Date(),
     });
-    res.json({ success: true, message: { ...message, text }, chatId });
+
+    // Return the original text in the response for sender
+    res.json({ success: true, message: { ...message, text }, chatId: chatDoc.id });
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ success: false, error: "Failed to send message" });
@@ -116,13 +131,22 @@ export async function fetchMessages(req, res) {
     if (pageToken) messagesRef = messagesRef.startAfter(new Date(Number(pageToken)));
     const snapshot = await messagesRef.get();
     const now = Date.now();
-    let messages = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return { ...data, text: data.text ? decryptMessage(data.text) : null };
-    }).filter(msg => {
-      const ts = getMillis(msg.timestamp);
-      return msg.senderId === currentUserId || (ts !== null && now - ts >= PENPAL_DELAY);
-    });
+    let docs = snapshot.docs;
+
+    // Only apply penpal delay to messages received by the current user
+    let messages = docs
+      .map(doc => {
+        const msg = doc.data();
+        // Decrypt the message text after fetching
+        return { ...msg, text: decryptMessage(msg.text) };
+      })
+      .filter(msg => {
+        // If the message was sent by the current user, always show it
+        if (msg.senderId === currentUserId) return true;
+        // Otherwise, apply the penpal delay
+        return now - msg.timestamp.toMillis() >= PENPAL_DELAY;
+      });
+
     let nextPageToken = null;
     if (messages.length > pageSize) {
       const lastMsg = messages[pageSize - 1];
@@ -151,21 +175,37 @@ export async function fetchLatestChats(req, res) {
       nextPageToken = docs[pageSize - 1].data().lastUpdated.toMillis();
       docs = docs.slice(0, pageSize);
     }
-    const chats = docs.map(doc => {
-      const data = doc.data();
-      const lastMessage = data.lastMessage ? {
-        ...data.lastMessage,
-        text: decryptMessage(data.lastMessage.text),
-        status: data.lastMessage.status,
-      } : null;
-      return {
-        chatId: doc.id,
-        participants: data.participants,
-        lastUpdated: data.lastUpdated,
-        lastMessage,
-        type: data.type
-      };
-    });
+
+    // For each chat, get the latest message (if any)
+    const chats = await Promise.all(
+      docs.map(async doc => {
+        const chatData = doc.data();
+        console.log(`[fetchLatestChats] Chat doc: id=${doc.id}, participants=`, chatData.participants, ', lastUpdated=', chatData.lastUpdated);
+        const messagesSnap = await db
+          .collection("chats")
+          .doc(doc.id)
+          .collection("messages")
+          .orderBy("timestamp", "desc")
+          .limit(1)
+          .get();
+        let lastMessage = messagesSnap.docs.length > 0 ? messagesSnap.docs[0].data() : null;
+        if (lastMessage) {
+          // Decrypt the last message text
+          lastMessage = { ...lastMessage, text: decryptMessage(lastMessage.text) };
+          console.log(`[fetchLatestChats] Last message for chat ${doc.id}:`, lastMessage);
+        } else {
+          console.log(`[fetchLatestChats] No messages for chat ${doc.id}`);
+        }
+        return {
+          chatId: doc.id,
+          participants: chatData.participants,
+          lastUpdated: chatData.lastUpdated,
+          lastMessage,
+        };
+      })
+    );
+
+    console.log("[fetchLatestChats] Final chats array:", chats);
     res.json({ success: true, chats, nextPageToken });
   } catch (err) {
     console.error("Fetch latest chats error:", err);

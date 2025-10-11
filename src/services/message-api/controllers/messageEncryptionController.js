@@ -14,12 +14,8 @@ console.log("Attempting to load .env from:", envPath);
 dotenv.config({ path: envPath });
 
 
-// Secure key must be in .env or environment variables
-if (!process.env.MESSAGE_SECRET_KEY) {
-  throw new Error('MESSAGE_SECRET_KEY is required in environment variables. Message encryption cannot proceed without a secure key.');
-}
-
-const SECRET_KEY = process.env.MESSAGE_SECRET_KEY;
+// Secure key should be in .env or Render/Vercel environment variables
+const SECRET_KEY = process.env.MESSAGE_SECRET_KEY || "dev-fallback-key";
 
 export function encryptMessage(text) {
 
@@ -31,3 +27,12 @@ export function decryptMessage(cipherText) {
   const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
   return bytes.toString(CryptoJS.enc.Utf8);
 }
+
+
+const test = "Hello, world!";
+const encrypted = encryptMessage(test);
+const decrypted = decryptMessage(encrypted);
+
+console.log("Test:", test);
+console.log("Encrypted:", encrypted);
+console.log("Decrypted:", decrypted);

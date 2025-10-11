@@ -341,13 +341,12 @@
       const shouldScrollToBottom = messagesDiv.scrollTop + messagesDiv.clientHeight >= messagesDiv.scrollHeight - 100;
       messagesDiv.innerHTML = "";
       for (const msg of messages) {
-       // const senderName = await getUsername(msg.senderId);
+        //const senderName = await getUsername(msg.senderId);
         const div = document.createElement("div");
         div.className = "message" + (msg.senderId === CURRENT_UID ? " me" : "");
         // add the following line in div.InnerHTML if you want to show sender name
         // <div class="message-sender">${escapeHtml(senderName)}</div>
         div.innerHTML = `
-          
           <div class="message-text">${escapeHtml(msg.text)}</div>
           <div class="timestamp">${formatTime(msg.timestamp)}</div>
         `;

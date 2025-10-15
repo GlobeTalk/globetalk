@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlobeTalk - Profile</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/src/frontend/styles/profile.css">
+    <link rel="stylesheet" href="../src/frontend/styles/profile.css">
 </head>
 <body>
     <header>
@@ -46,7 +46,7 @@
             </div>
 
             <div class="action-buttons">
-                <button class="start-chat-btn">Start a Chat</button>
+                <button class="start-chat-btn" id="startChatBtn">Chat</button>
                 <div class="learn-more-link">
                     <a href="dashboard.html">
                         <span class="learn-more-purple">Learn more</span>
@@ -62,5 +62,37 @@
     </div>
 
 <script src="/src/frontend/scripts/profilepage.js" type="module"></script>
+<script>
+// Ensure Start a Chat button passes both targetUser and targetUsername
+document.addEventListener('DOMContentLoaded', function() {
+    const startChatBtn = document.getElementById('startChatBtn');
+    const usernameEl = document.getElementById('username');
+    const userId = new URLSearchParams(window.location.search).get('userId');
+    if (startChatBtn) {
+        // Disable button initially if userId is missing
+        if (!userId) {
+            startChatBtn.disabled = true;
+            startChatBtn.textContent = 'Chat (User not found)';
+            return;
+        }
+        // Show loading state until username is populated
+        startChatBtn.disabled = true;
+        startChatBtn.textContent = 'Loading...';
+        // Observe username changes
+        const observer = new MutationObserver(() => {
+            const username = usernameEl?.textContent?.trim();
+            if (username) {
+                startChatBtn.disabled = false;
+                startChatBtn.textContent = 'Chat';
+                startChatBtn.onclick = function() {
+                    window.location.href = `chats.html?targetUser=${encodeURIComponent(userId)}&targetUsername=${encodeURIComponent(username)}`;
+                };
+                observer.disconnect();
+            }
+        });
+        observer.observe(usernameEl, { childList: true, subtree: true });
+    }
+});
+</script>
 </body>
 </html>

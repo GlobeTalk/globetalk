@@ -29,6 +29,7 @@
   "homepage": "https://github.com/GlobeTalk/globetalk#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "emoji-picker-element": "^1.27.0",
     "express": "^5.1.0",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.5.0"

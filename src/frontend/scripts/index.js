@@ -1,16 +1,28 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const joinButton = document.getElementById('getStartedBtn'); 
+// src/frontend/scripts/index.js
 
-  // Click event listener
+export function redirectToLogin(win = window) {
+  win.location.href = './pages/login.html';
+}
+
+export function goToLogin(navigate = (url) => { window.location.href = url; }) {
+  navigate('./pages/login.html');
+}
+
+export function setupGetStartedBtn() {
+  const joinButton = document.getElementById('getStartedBtn');
+  if (!joinButton) return;
+
   joinButton.addEventListener('click', () => {
-    window.location.href = './pages/login.html';
+    redirectToLogin();
   });
 
-  // Keyboard accessibility (Enter or Space key)
   joinButton.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault(); // prevent scrolling
       joinButton.click();
     }
   });
-});
+}
+
+// Automatically attach on real page load
+document.addEventListener('DOMContentLoaded', setupGetStartedBtn);

@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "npx http-server pages -o index.html",
+    "start": "node server.js",
+    "serve:frontend": "npx http-server pages -o index.html",
     "test": "jest --silent --coverage",
     "lint": "eslint src tests pages",
     "cypress:open": "cypress open",

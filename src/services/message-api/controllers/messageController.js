@@ -118,7 +118,7 @@ export async function fetchMessages(req, res) {
     const now = Date.now();
     let messages = snapshot.docs.map(doc => {
       const data = doc.data();
-      return { ...data, text: data.text ? decryptMessage(data.text) : null };
+      return { ...data, id: doc.id, text: data.text ? decryptMessage(data.text) : null };
     }).filter(msg => {
       const ts = getMillis(msg.timestamp);
       return msg.senderId === currentUserId || (ts !== null && now - ts >= PENPAL_DELAY);

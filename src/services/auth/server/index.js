@@ -1,28 +1,8 @@
-//first ensure  you import dotenv at the very top because it needs to load env variables before anything else
-import dotenv from "dotenv";
-dotenv.config(); //please update the path as necessary
-console.log("FIREBASE_SERVICE_ACCOUNT loaded?", !!process.env.FIREBASE_SERVICE_ACCOUNT);
-
 
 // import express and other necessary modules
 import express from "express";
 import cors from "cors";
-//import admin from "../../firebaseAdmin.js"; // Import initialized admin
 import userRouter from "./routes/users.js";
-//import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Define __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load .env file from project root
-const envPath = path.resolve(__dirname, "../../../.env");
-console.log("Attempting to load .env from:", envPath);
-dotenv.config({ path: envPath });
-
-console.log("FIREBASE_SERVICE_ACCOUNT:", !!process.env.FIREBASE_SERVICE_ACCOUNT);
 
 const app = express();
 app.use(cors());

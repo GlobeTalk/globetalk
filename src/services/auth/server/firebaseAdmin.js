@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load .env file from project root
-const envPath = path.resolve(__dirname, "../../../.env");
+const envPath = path.resolve(__dirname, "../../../../.env");
 console.log("Attempting to load .env from:", envPath);
 dotenv.config({ path: envPath });
 

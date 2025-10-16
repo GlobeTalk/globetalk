@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  onIdTokenChanged,
 } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 
@@ -28,8 +29,11 @@ const db = getFirestore(app);
 const secretKey = "groupBKPTN9";
 
 export function observeUser(callback) {
-
   return onAuthStateChanged(auth, callback);
+}
+
+export function observeToken(callback) {
+  return onIdTokenChanged(auth, callback);
 }
 
 

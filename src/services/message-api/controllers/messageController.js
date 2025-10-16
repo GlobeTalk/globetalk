@@ -1,199 +1,214 @@
 import { admin } from "../firebaseAdmin.js";
-
-// Penpal delay in milliseconds
-const PENPAL_DELAY = 60 * 1000; // 1 minute for demo
-
-// Default pagination values
-const DEFAULT_PAGE_SIZE = 20;
+import { encryptMessage, decryptMessage } from "./messageEncryptionController.js";
 
 const db = admin.firestore();
+const DEFAULT_PAGE_SIZE = 20;
+const PENPAL_DELAY = 60 * 1000; // 1 minute
 
-// Helper to find or create chat between two users
-async function getOrCreateChat(uid1, uid2) {
-  // Find existing chat
-  const chatQuery = await db
-    .collection("chats")
-    .where("participants", "array-contains", uid1)
-    .get();
-
-  let chatDoc = chatQuery.docs.find(doc => {
-    const participants = doc.data().participants;
-    return participants.length === 2 && participants.includes(uid2);
-  });
-
-  if (chatDoc) {
-    return chatDoc;
-  }
-
-  // Create new chat
-  const newChatRef = await db.collection("chats").add({
-    participants: [uid1, uid2],
-    lastUpdated: new Date(),
-  });
-  return await newChatRef.get();
+// Helper to get milliseconds from either Firestore Timestamp, JS Date, or number
+function getMillis(ts) {
+  if (ts == null) return null;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'number') return ts;
+  return null;
 }
 
-// Send message
-export async function sendMessage(req, res) {
-  console.log("sendMessage called");
-  const { recipientId, text } = req.body;
-  const senderId = req.user.uid;
 
-  if (!recipientId || !text) {
-    return res.status(400).json({ error: "recipientId and text are required" });
+// POST /chats — Create a new chat
+export async function createChat(req, res) {
+  const { participants, type } = req.body; // [{ uid, username }, ...]
+  if (!Array.isArray(participants) || participants.length !== 2) {
+    return res.status(400).json({ success: false, error: "Exactly two participants required" });
   }
-
+  // Sort participants by uid for consistent comparison
+  const sortedUids = participants.map(p => p.uid).sort();
+  const participantUids = participants.map(p => p.uid);
   try {
-    const chatDoc = await getOrCreateChat(senderId, recipientId);
+    // Find existing chat with exactly these two participants
+    const snapshot = await db.collection("chats")
+      .where("participantUids", "array-contains", sortedUids[0])
+      .get();
+    let existingChat = null;
+    snapshot.forEach(doc => {
+      const chat = doc.data();
+      if (Array.isArray(chat.participantUids) && chat.participantUids.length === 2) {
+        const chatUids = chat.participantUids.slice().sort();
+        if (chatUids[0] === sortedUids[0] && chatUids[1] === sortedUids[1]) {
+          existingChat = { id: doc.id, ...chat };
+        }
+      }
+    });
+    if (existingChat) {
+      return res.status(200).json({ success: true, chatId: existingChat.id, chat: existingChat });
+    }
+    // No existing chat, create new
+    const newChatRef = await db.collection("chats").add({
+      participants,
+      participantUids,
+      lastUpdated: new Date(),
+      lastMessage: null,
+      type: "penpal"
+      
+    });
+    const chatDoc = await newChatRef.get();
+    res.status(201).json({ success: true, chatId: chatDoc.id, chat: chatDoc.data() });
+  } catch (err) {
+    console.error("Create chat error:", err);
+    res.status(500).json({ success: false, error: "Failed to create chat" });
+  }
+}
 
+// POST /chats/:chatId/messages — Send a message to a chat
+export async function sendMessage(req, res) {
+  const { chatId } = req.params;
+  const { text } = req.body;
+  const senderId = req.user.uid;
+  if (!text) return res.status(400).json({ success: false, error: "Text is required" });
+  try {
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists) return res.status(404).json({ success: false, error: "Chat not found" });
+    const encryptedText = encryptMessage(text);
     const message = {
       senderId,
-      text,
+      text: encryptedText,
       timestamp: new Date(),
     };
-    console.log(senderId, "sending message to", recipientId, "in chat", chatDoc.id, ":", text);
-    await db.collection("chats")
-      .doc(chatDoc.id)
-      .collection("messages")
-      .add(message);
-
-    // Update lastUpdated for chat
-    await db.collection("chats").doc(chatDoc.id).update({
+    await db.collection("chats").doc(chatId).collection("messages").add(message);
+    await db.collection("chats").doc(chatId).update({
+      lastMessage: { senderId, text: encryptedText, timestamp: new Date(), status: 'unread' },
       lastUpdated: new Date(),
     });
-
-    res.json({ success: true, message, chatId: chatDoc.id });
+    res.json({ success: true, message: { ...message, text }, chatId });
   } catch (err) {
     console.error("Send message error:", err);
-    res.status(500).json({ error: "Failed to send message" });
+    res.status(500).json({ success: false, error: "Failed to send message" });
   }
 }
 
-// Fetch messages with penpal delay and pagination
+// GET /chats/:chatId/messages — Get messages for a chat
 export async function fetchMessages(req, res) {
-  console.log("fetchMessages called");
-  const { otherUserId } = req.params; // the user you want to chat with
+  const { chatId } = req.params;
   const currentUserId = req.user.uid;
   const pageSize = parseInt(req.query.pageSize) || DEFAULT_PAGE_SIZE;
-  const pageToken = req.query.pageToken || null; // message timestamp to start after
-
+  const pageToken = req.query.pageToken || null;
   try {
-    const chatQuery = await db
-      .collection("chats")
-      .where("participants", "array-contains", currentUserId)
-      .get();
-
-    const chatDoc = chatQuery.docs.find(doc => doc.data().participants.includes(otherUserId));
-    if (!chatDoc) return res.json({ success: true, messages: [], nextPageToken: null });
-
-    let messagesRef = db
-      .collection("chats")
-      .doc(chatDoc.id)
-      .collection("messages")
-      .orderBy("timestamp", "desc")
-      .limit(pageSize + 1); // fetch one extra for pagination
-
-    if (pageToken) {
-      messagesRef = messagesRef.startAfter(new Date(Number(pageToken)));
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists) return res.status(404).json({ success: false, messages: [], nextPageToken: null });
+    // If the chat has a lastMessage that's unread and was sent by the other user,
+    // mark it as read now because the current user is fetching messages.
+    const chatData = chatDoc.data();
+    if (chatData && chatData.lastMessage && chatData.lastMessage.status !== 'read') {
+      const lastMsg = chatData.lastMessage;
+      // Only update if the last message was sent by someone else (not current user)
+      if (lastMsg.senderId && lastMsg.senderId !== currentUserId) {
+        try {
+          await db.collection('chats').doc(chatId).update({ 'lastMessage.status': 'read' });
+          // update local copy so returned chat state (if used) reflects change
+          chatData.lastMessage.status = 'read';
+        } catch (err) {
+          console.error('Failed to update lastMessage status to read:', err);
+          // non-fatal — continue to fetch messages
+        }
+      }
     }
-
+    let messagesRef = db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(pageSize + 1);
+    if (pageToken) messagesRef = messagesRef.startAfter(new Date(Number(pageToken)));
     const snapshot = await messagesRef.get();
     const now = Date.now();
-    let docs = snapshot.docs;
-
-    // Only apply penpal delay to messages received by the current user
-    let messages = docs
-      .map(doc => doc.data())
-      .filter(msg => {
-        // If the message was sent by the current user, always show it
-        if (msg.senderId === currentUserId) return true;
-        // Otherwise, apply the penpal delay
-        return now - msg.timestamp.toMillis() >= PENPAL_DELAY;
-      });
-
+    let messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return { ...data, text: data.text ? decryptMessage(data.text) : null };
+    }).filter(msg => {
+      const ts = getMillis(msg.timestamp);
+      return msg.senderId === currentUserId || (ts !== null && now - ts >= PENPAL_DELAY);
+    });
     let nextPageToken = null;
     if (messages.length > pageSize) {
-      // There is another page
       const lastMsg = messages[pageSize - 1];
-      nextPageToken = lastMsg.timestamp.toMillis();
+      nextPageToken = getMillis(lastMsg.timestamp);
       messages = messages.slice(0, pageSize);
     }
-
-    // Return messages in ascending order (oldest first)
-    messages = messages.reverse();
-
-    res.json({ success: true, messages, nextPageToken });
+    res.json({ success: true, messages: messages.reverse(), nextPageToken });
   } catch (err) {
     console.error("Fetch messages error:", err);
-    res.status(500).json({ error: "Failed to fetch messages" });
+    res.status(500).json({ success: false, error: "Failed to fetch messages" });
   }
 }
 
-// Fetch latest chats for a user (with pagination)
+// GET /chats — List all chats for the user
 export async function fetchLatestChats(req, res) {
-  console.log("fetchLatestChats called");
   const currentUserId = req.user.uid;
   const pageSize = parseInt(req.query.pageSize) || DEFAULT_PAGE_SIZE;
-  const pageToken = req.query.pageToken || null; // lastUpdated timestamp to start after
-
-  console.log("[fetchLatestChats] currentUserId:", currentUserId);
-  console.log("[fetchLatestChats] pageSize:", pageSize);
-  console.log("[fetchLatestChats] pageToken:", pageToken);
-
+  const pageToken = req.query.pageToken || null;
   try {
-    let chatsRef = db
-      .collection("chats")
-      .where("participants", "array-contains", currentUserId)
-      .orderBy("lastUpdated", "desc")
-      .limit(pageSize + 1); // fetch one extra for pagination
-
-    if (pageToken) {
-      console.log("[fetchLatestChats] Using startAfter with:", new Date(Number(pageToken)));
-      chatsRef = chatsRef.startAfter(new Date(Number(pageToken)));
-    }
-
+    let chatsRef = db.collection("chats").where("participantUids", "array-contains", currentUserId).orderBy("lastUpdated", "desc").limit(pageSize + 1);
+    if (pageToken) chatsRef = chatsRef.startAfter(new Date(Number(pageToken)));
     const snapshot = await chatsRef.get();
-    console.log("[fetchLatestChats] Query returned", snapshot.docs.length, "docs");
     let docs = snapshot.docs;
     let nextPageToken = null;
     if (docs.length > pageSize) {
-      const lastChat = docs[pageSize - 1];
-      nextPageToken = lastChat.data().lastUpdated.toMillis();
-      console.log("[fetchLatestChats] More pages available, nextPageToken:", nextPageToken);
+      nextPageToken = docs[pageSize - 1].data().lastUpdated.toMillis();
       docs = docs.slice(0, pageSize);
     }
-
-    // For each chat, get the latest message (if any)
-    const chats = await Promise.all(
-      docs.map(async doc => {
-        const chatData = doc.data();
-        console.log(`[fetchLatestChats] Chat doc: id=${doc.id}, participants=`, chatData.participants, ', lastUpdated=', chatData.lastUpdated);
-        const messagesSnap = await db
-          .collection("chats")
-          .doc(doc.id)
-          .collection("messages")
-          .orderBy("timestamp", "desc")
-          .limit(1)
-          .get();
-        const lastMessage = messagesSnap.docs.length > 0 ? messagesSnap.docs[0].data() : null;
-        if (lastMessage) {
-          console.log(`[fetchLatestChats] Last message for chat ${doc.id}:`, lastMessage);
-        } else {
-          console.log(`[fetchLatestChats] No messages for chat ${doc.id}`);
-        }
-        return {
-          chatId: doc.id,
-          participants: chatData.participants,
-          lastUpdated: chatData.lastUpdated,
-          lastMessage,
-        };
-      })
-    );
-
-    console.log("[fetchLatestChats] Final chats array:", chats);
+    const chats = docs.map(doc => {
+      const data = doc.data();
+      const lastMessage = data.lastMessage ? {
+        ...data.lastMessage,
+        text: decryptMessage(data.lastMessage.text),
+        status: data.lastMessage.status,
+      } : null;
+      return {
+        chatId: doc.id,
+        participants: data.participants,
+        lastUpdated: data.lastUpdated,
+        lastMessage,
+        type: data.type
+      };
+    });
     res.json({ success: true, chats, nextPageToken });
   } catch (err) {
-    console.error("[fetchLatestChats] Error:", err);
-    res.status(500).json({ error: "Failed to fetch latest chats" });
+    console.error("Fetch latest chats error:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch latest chats" });
+  }
+}
+// GET /chats/:chatId — Get chat details
+export async function getChat(req, res) {
+  const { chatId } = req.params;
+  try {
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists) return res.status(404).json({ success: false, error: "Chat not found" });
+    const data = chatDoc.data();
+    res.json({ success: true, chatId, chat: data });
+  } catch (err) {
+    console.error("Get chat error:", err);
+    res.status(500).json({ success: false, error: "Failed to get chat" });
+  }
+}
+
+// DELETE /chats/:chatId — Delete a chat
+export async function deleteChat(req, res) {
+  const { chatId } = req.params;
+
+  try {
+    const chatRef = db.collection("chats").doc(chatId);
+    const chatDoc = await chatRef.get();
+    if (!chatDoc.exists) {
+      return res.status(404).json({ success: false, error: "Chat not found" });
+    }
+
+    // Delete all messages
+    const messagesSnapshot = await chatRef.collection("messages").get();
+    const batch = db.batch();
+    messagesSnapshot.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    //Delete the chat doc
+    await chatRef.delete();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete chat error:", err);
+    res.status(500).json({ success: false, error: "Failed to delete chat" });
   }
 }

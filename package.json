@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "npx http-server pages -o index.html",
+    "start": "node server.js",
+    "serve:frontend": "npx http-server pages -o index.html",
     "test": "jest --silent --coverage",
     "lint": "eslint src tests pages",
     "cypress:open": "cypress open",
@@ -29,6 +30,7 @@
   "homepage": "https://github.com/GlobeTalk/globetalk#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "emoji-picker-element": "^1.27.0",
     "express": "^5.1.0",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.5.0"

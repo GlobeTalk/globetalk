@@ -1,5 +1,5 @@
 
-import admin from '../../FirebaseAdmin.js';
+import {admin} from '../firebaseAdmin.js';
 
 const db = admin.firestore();
 

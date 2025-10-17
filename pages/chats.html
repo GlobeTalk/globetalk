@@ -378,6 +378,10 @@
 
     async function selectChat(chat) {
       selectedChat = chat;
+      const localChat = chats.find(c => c.chatId === selectedChat.chatId);
+  if (localChat?.lastMessage) {
+    localChat.lastMessage.status = "read";
+  }
       messages = [];
       messagesNextPage = null;
 
@@ -494,16 +498,21 @@
         const otherUid = otherParticipant ? otherParticipant.uid : null;
         const otherUser = otherParticipant ? otherParticipant.username : "Unknown";
         const isBlocked = otherUid && blockedList.includes(otherUid);
+       const isUnread = chat.lastMessage?.status === "unread" && chat.lastMessage?.senderId !== CURRENT_UID;
+        
         const div = document.createElement("div");
         div.className = "chat-item" + (selectedChat?.chatId === chat.chatId ? " active" : "");
         div.setAttribute('tabindex', '0');
         div.setAttribute('role', 'button');
         div.setAttribute('aria-label', `Chat with ${otherUser}`);
         div.innerHTML = `
-          <div class="chat-user" style="color:${isBlocked ? '#ef4444' : 'inherit'};font-weight:${isBlocked ? '600' : 'inherit'};">
-            ${escapeHtml(otherUser)}${isBlocked ? ' <span style="color:#ef4444;font-weight:600">(Blocked)</span>' : ''}
-          </div>
-        `;
+          <div class="chat-user" style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+           <span class="username" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+           ${escapeHtml(otherUser)}${isBlocked ? ' (Blocked)' : ''}
+          </span>
+           ${isUnread ? `<span class="unread-dot" style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:#c084fc;"></span>` : ""}
+             </div>
+           `;
         div.onclick = () => {
           if (!selectedChat || selectedChat.chatId !== chat.chatId) {
             selectChat(chat);

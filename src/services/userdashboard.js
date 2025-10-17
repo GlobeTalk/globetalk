@@ -28,3 +28,31 @@ export async function getPenPalSuggestions(userid) {
     })
     .slice(0, 6);
 }
+
+/**
+ * Get active pen pals for a user by reading their matchedWith array
+ * @param {string} userid
+ * @returns {Promise<Array>} - array of user profiles
+ */
+export async function getActivePenPals(userid) {
+  // Read the user's document to get matchedWith
+  const userDoc = await getDoc(doc(db, "users", userid));
+  if (!userDoc.exists()) return [];
+  const matched = userDoc.data().matchedWith || [];
+  if (!Array.isArray(matched) || matched.length === 0) return [];
+
+  // Fetch each matched user's profile
+  const results = [];
+  for (const id of matched) {
+    try {
+      const d = await getDoc(doc(db, "users", id));
+      if (d.exists()) {
+        results.push({ _docId: d.id, ...d.data() });
+      }
+    } catch (err) {
+      console.warn(`Failed to load matched user ${id}:`, err.message);
+    }
+  }
+
+  return results;
+}

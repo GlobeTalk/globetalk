@@ -459,8 +459,21 @@
 
       // Update send button if blocked
       sendButton.textContent = isBlocked ? 'Unblock' : 'Send';
+      // Ensure the form and button are re-enabled for non-banned chats
       sendButton.disabled = false;
+      chatForm.disabled = false;
+      // Restore the form submit handler (same behavior as the global handler)
+      chatForm.onsubmit = async e => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text) return;
+        await sendMessage(text);
+      };
+      // Reset any button inline styles applied for the banned state
+      sendButton.style.background = '';
+      sendButton.style.color = '';
       sendButton.onclick = null;
+
       if (isBlocked) {
         sendButton.onclick = async (e) => {
           e.preventDefault();
@@ -472,8 +485,6 @@
             alert('Failed to unblock user.');
           }
         };
-      } else {
-        sendButton.onclick = null;
       }
       await renderChatList();
       await loadMessages(chat);

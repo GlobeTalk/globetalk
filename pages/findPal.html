@@ -56,24 +56,6 @@
                       </select>
                       <span class="helper-text">Find pen pals in compatible time zones</span>
                   </div>
-
-                  <div class="form-group">
-                      <label for="interest" class="form-label">Interests</label>
-                      <select id="interest" name="interest" class="form-select" required>
-                          <option value="">Select an interest</option>
-                          <option value="reading">Reading & Literature</option>
-                          <option value="music">Music</option>
-                          <option value="cooking">Cooking & Cuisine</option>
-                          <option value="art">Art & Design</option>
-                          <option value="travel">Travel & Adventure</option>
-                          <option value="sports">Sports & Fitness</option>
-                          <option value="technology">Technology</option>
-                          <option value="gaming">Gaming</option>
-                          <option value="photography">Photography</option>
-                          <option value="movies">Movies & TV</option>
-                      </select>
-                      <span class="helper-text">Connect over shared hobbies and passions</span>
-                  </div>
               </div>
 
               <div class="submit-button-container">
@@ -93,6 +75,25 @@
               </div>
           </form>
       </div>
+
+    <div id="matchContainer" class="match-container" style="display: none;">
+    <h3>Your Perfect Pen Pal 💌</h3>
+    <div class="match-card">
+        <p><strong>Username:</strong> <span id="matchUsername"></span></p>
+        <p><strong>Bio:</strong> <span id="matchBio"></span></p>
+        <p><strong>Region:</strong> <span id="matchRegion"></span></p>
+        <p><strong>Languages:</strong> <span id="matchLanguages"></span></p>
+        <p><strong>Hobbies:</strong> <span id="matchHobbies"></span></p>
+    </div>
+
+    <input type="hidden" id="matchedUserId">
+
+    <div class="match-actions">
+        <button id="sendRequestBtn" class="action-btn">Send Pen Pal Request</button>
+        <div id="requestMessage" class="status-message" style="display: none;"></div>
+    </div>
+    </div>
+
   </div>
 
   <!-- Decorative Globe Icon -->
@@ -105,3 +106,5 @@
   <script type="module" src="../src/frontend/scripts/findPal.js"></script>
 </body>
 </html>
+
+

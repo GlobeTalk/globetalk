@@ -21,7 +21,7 @@ async function authMiddleware(req, res, next) {
 // Apply middleware to all profile routes
 router.use(authMiddleware);
 
-// GET /api/profile
+// GET /api/profile - get own profile
 router.get("/", async (req, res) => {
   const profile = await getUserProfile(req.uid);
   if (!profile) return res.status(404).json({ error: "Profile not found" });

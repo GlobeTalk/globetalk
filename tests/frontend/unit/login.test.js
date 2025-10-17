@@ -1,53 +1,98 @@
-/**
- * @jest-environment jsdom
- */
+// tests/frontend/unit/login.test.js
+import * as LoginModule from "../../../src/frontend/scripts/login.js";
+import { signInWithGoogle, observeUser } from "../../../src/services/firebase.js";
+import { isBannedUser, isAdmin } from "../../../src/services/admin.js";
 
-describe("Login Page ", () => {
-  beforeAll(() => {
-    // Prevent JSDOM navigation errors
-    delete window.location;
-    window.location = { href: "" };
+jest.mock("../../../src/services/firebase.js");
+jest.mock("../../../src/services/admin.js");
 
-    // Mock the HTML structure of login.html
+describe("login.js DOM interactions", () => {
+  let loginBtn, privacyCheckbox, consentCheckbox;
+
+  beforeEach(() => {
     document.body.innerHTML = `
-      <h1>Login</h1>
-      <button id="google-login">Login with Google</button>
+      <button id="loginBtn">Login</button>
+      <input type="checkbox" id="privacy" />
+      <input type="checkbox" id="consent" />
     `;
+    loginBtn = document.getElementById("loginBtn");
+    privacyCheckbox = document.getElementById("privacy");
+    consentCheckbox = document.getElementById("consent");
+
+    localStorage.clear();
+    jest.clearAllMocks();
+
+    // Mock Firebase sign-in
+    signInWithGoogle.mockResolvedValue({ user: { uid: "uid123", displayName: "Test User", getIdToken: async () => "token123" } });
+    isBannedUser.mockResolvedValue(false);
+    isAdmin.mockResolvedValue(false);
   });
 
-  it("renders the login page", () => {
-    const heading = document.querySelector("h1");
-    expect(heading).not.toBeNull();
-    expect(heading.textContent).toMatch(/Login/i);
+  test("login button disabled until checkboxes checked", () => {
+    // Initially disabled
+    expect(loginBtn.disabled).toBe(true);
+
+    privacyCheckbox.checked = true;
+    consentCheckbox.checked = true;
+    privacyCheckbox.dispatchEvent(new Event("change"));
+    consentCheckbox.dispatchEvent(new Event("change"));
+
+    expect(loginBtn.disabled).toBe(false);
   });
 
-  it("has a Google login button", () => {
-    const button = document.getElementById("google-login");
-    expect(button).not.toBeNull();
-    expect(button.textContent).toMatch(/Google/i);
+  test("clicking login triggers Google sign-in and sets token", async () => {
+    privacyCheckbox.checked = true;
+    consentCheckbox.checked = true;
+    privacyCheckbox.dispatchEvent(new Event("change"));
+    consentCheckbox.dispatchEvent(new Event("change"));
+
+    await loginBtn.click();
+
+    expect(signInWithGoogle).toHaveBeenCalled();
+    expect(localStorage.getItem("idToken")).toBeTruthy();
+    expect(localStorage.getItem("policiesAccepted")).toBe("true");
   });
 
-  it("call Firebase login", async () => {
-    // Fake user object
-    const fakeUser = {
-      uid: "123-uid",
-      email: "user@gmail.com",
-      displayName: "123user",
-    };
+  test("keydown Enter or Space triggers login click", async () => {
+    privacyCheckbox.checked = true;
+    consentCheckbox.checked = true;
+    privacyCheckbox.dispatchEvent(new Event("change"));
+    consentCheckbox.dispatchEvent(new Event("change"));
 
-    // Always resolves
-    const signInWithGoogle = jest.fn(async () => ({ user: fakeUser }));
+    const clickSpy = jest.spyOn(loginBtn, "click");
 
-    const result = await signInWithGoogle();
-    expect(result.user.email).toBe("user@gmail.com");
+    loginBtn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(clickSpy).toHaveBeenCalled();
+
+    loginBtn.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+    expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 
-  it("navigate after login", async () => {
-    window.location.href = "userdashboard.html";
-    expect(window.location.href).toContain("");
+  test("banned user shows error and redirects", async () => {
+    isBannedUser.mockResolvedValue(true);
+    privacyCheckbox.checked = true;
+    consentCheckbox.checked = true;
+    privacyCheckbox.dispatchEvent(new Event("change"));
+    consentCheckbox.dispatchEvent(new Event("change"));
+
+    const safeNavigateSpy = jest.spyOn(LoginModule.utils, "safeNavigate").mockImplementation(async () => {});
+
+    await loginBtn.click();
+    expect(isBannedUser).toHaveBeenCalled();
+    expect(safeNavigateSpy).toHaveBeenCalled(); // redirected
   });
 
-  it("expect imports login.js to have loaded successfully", () => {
-    expect(true).toBe(true);
+  test("admin user redirects to admin dashboard", async () => {
+    isAdmin.mockResolvedValue(true);
+    privacyCheckbox.checked = true;
+    consentCheckbox.checked = true;
+    privacyCheckbox.dispatchEvent(new Event("change"));
+    consentCheckbox.dispatchEvent(new Event("change"));
+
+    const safeNavigateSpy = jest.spyOn(LoginModule.utils, "safeNavigate").mockImplementation(async () => {});
+
+    await loginBtn.click();
+    expect(isAdmin).toHaveBeenCalled();
+    expect(safeNavigateSpy).toHaveBeenCalledWith(LoginModule.CONFIG.PAGES.ADMIN_DASHBOARD);
   });
 });

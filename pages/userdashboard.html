@@ -196,43 +196,55 @@
             try {
                 container.innerHTML = '<span>Loading conversations...</span>';
                 
-                const username = await retryOperation(() => getUsername(userId));
-                
-                if (!username) {
-                    throw new Error('Unable to retrieve username');
-                }
-                
-                const conversations = await retryOperation(() => getActiveConversations(username));
-                
+                const response = await retryOperation(async () => {
+                    const token = await auth.currentUser.getIdToken();
+                    const resp = await fetch('/api/chat/latest', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (!resp.ok) {
+                        throw new Error('Failed to fetch conversations');
+                    }
+                    return resp.json();
+                });
+                const chats = response.chats || [];
                 container.innerHTML = '';
-                
-                if (!conversations || conversations.length === 0) {
+                if (chats.length === 0) {
                     container.innerHTML = '<span style="color: #666;">No active conversations yet. Find a pen pal to start chatting!</span>';
                     return;
                 }
-
-                conversations.forEach(conv => {
+                chats.forEach(conv => {
                     try {
                         const item = document.createElement('div');
                         item.className = 'conversation-item';
                         item.setAttribute('role', 'button');
                         item.setAttribute('tabindex', '0');
-                        
-                        const otherUser = escapeHtml(conv?.otherUser || 'Unknown');
-                        const timeAgo = formatTimeAgo(conv?.lastUpdated);
-                        
+                        // Find the other participant
+                        const otherUserId = (conv.participants || []).find(uid => uid !== userId);
+                        const otherUser = otherUserId ? escapeHtml(otherUserId) : 'Unknown';
+                        // Handle Firestore Timestamp object or JS Date
+                        let lastUpdated = conv.lastUpdated;
+                        if (lastUpdated && typeof lastUpdated === 'object' && typeof lastUpdated.toDate === 'function') {
+                            lastUpdated = lastUpdated.toDate();
+                        }
+                        const timeAgo = formatTimeAgo(lastUpdated);
+                        let previewText = 'No messages yet';
+                        if (conv.lastMessage && conv.lastMessage.text) {
+                            previewText = escapeHtml(conv.lastMessage.text.substring(0, 50)) + (conv.lastMessage.text.length > 50 ? '...' : '');
+                        }
                         item.innerHTML = `
-                            <h4>${otherUser}</h4>
+                            <div>
+                                <h4>${otherUser}</h4>
+                                <small style="color: #666;">${previewText}</small>
+                            </div>
                             <span class="conversation-time">${timeAgo}</span>
                         `;
-                        
                         const navigateToChat = () => {
-                            if (conv?.conversationId || conv?.otherUser) {
-                                const chatId = conv.conversationId || conv.otherUser;
-                                window.location.href = `../pages/chat.html?id=${encodeURIComponent(chatId)}`;
+                            if (conv.chatId) {
+                                window.location.href = `../pages/chats.html?id=${encodeURIComponent(conv.chatId)}`;
                             }
                         };
-                        
                         item.onclick = navigateToChat;
                         item.onkeypress = (e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
@@ -240,7 +252,6 @@
                                 navigateToChat();
                             }
                         };
-                        
                         container.appendChild(item);
                     } catch (convError) {
                         console.error('Error rendering conversation item:', convError);

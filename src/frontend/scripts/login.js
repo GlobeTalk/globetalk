@@ -476,3 +476,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+export { utils };
+export { AuthError, NetworkError, checkIfUserExists, UIStateManager, CONFIG };

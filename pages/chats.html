@@ -442,6 +442,10 @@
       // --- Disable send button if banned ---
       if (isBanned) {
         sendButton.disabled = true;
+        chatForm.disabled = true;
+  // Prevent any form submission
+        chatForm.onsubmit = (e) => e.preventDefault();
+        sendButton.onclick = (e) => e.preventDefault();
         sendButton.textContent = "User is banned";
         sendButton.style.background = "#b91c1c";
         sendButton.style.color = "#fff";

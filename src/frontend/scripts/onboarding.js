@@ -168,7 +168,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });*/
 
 
-import { observeUser } from "../../services/firebase.js";
+import { auth, observeUser } from "../../services/firebase.js";
+
 
 
 

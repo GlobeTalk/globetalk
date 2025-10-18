@@ -1,4 +1,5 @@
-import { signInWithGoogle, observeUser } from "../../services/firebase.js";
+import { auth, observeUser } from "../../services/firebase.js";
+
 import { isBannedUser, isAdmin } from "../../services/admin.js"; 
 
 // ------------------ CONFIGURATION ------------------

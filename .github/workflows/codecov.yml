@@ -21,10 +21,19 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci #can use install
 
-      - name: Run tests
-        run: npm test
+      - name: Run Jest tests
+        run: npm run test:unit
+
+      - name: Run Cypress tests
+        run: |
+          npm run serve:frontend &
+          npx wait-on http://127.0.0.1:8081
+          npm run test:e2e
+
+      - name: Merge coverage reports
+        run: npm run coverage:merge
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

@@ -281,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Google Login Flow
   loginBtn.addEventListener("click", async (event) => {
     event.preventDefault();
-    
+
     if (loginBtn.disabled) return;
 
     uiManager.setLoading(loginBtn, true, 'Signing in...');
@@ -300,17 +300,11 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       
       const { user } = await Promise.race([signInPromise, timeoutPromise]);
-      
       if (!user || !user.uid) {
         throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
       }
 
-      // Check if user is banned
-      const isBanned = await isBannedUser(user.uid);
-      if (isBanned) {
-        throw new AuthError('Your account is banned.', 'USER_BANNED');
-      }
-
+      // Get token before calling admin.js functions
       const idToken = await utils.retryOperation(async () => {
         const token = await user.getIdToken(true);
         if (!token) {
@@ -319,19 +313,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return token;
       });
 
-      console.log("User signed in:", user.displayName);
-      
+      // Check if user is banned
+      const isBanned = await isBannedUser(user.uid, idToken); // <-- Pass token here!
+      if (isBanned) {
+        throw new AuthError('Your account is banned.', 'USER_BANNED');
+      }
+
       utils.setSecureToken(idToken);
       localStorage.setItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED, "true");
 
       uiManager.showMessage(`Welcome, ${user.displayName}!`, 'success');
-      
       uiManager.setLoading(loginBtn, true, 'Checking account...');
-      
+
       // Check admin status
-      const isAdminUser = await isAdmin(user.uid);
+      const isAdminUser = await isAdmin(user.uid, idToken); // <-- Pass token here!
       const isExistingUser = await checkIfUserExists(user.uid);
-      
+
       // Navigate based on user status
       if (isAdminUser) {
         console.log("[Login] Admin user, redirecting to admin dashboard");
@@ -409,13 +406,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const idToken = await utils.retryOperation(async () => {
           return await user.getIdToken(true);
         });
-        
         utils.setSecureToken(idToken);
-        console.log("👤 Logged in as:", user.email);
 
         if (localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true") {
           // Check if user is banned
-          const isBanned = await isBannedUser(user.uid);
+          const isBanned = await isBannedUser(user.uid, idToken); // <-- Pass token here!
           if (isBanned) {
             console.log("[AuthState] User is banned, redirecting to login");
             localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
@@ -426,7 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Check admin status
-          const isAdminUser = await isAdmin(user.uid);
+          const isAdminUser = await isAdmin(user.uid, idToken); // <-- Pass token here!
           const exists = await checkIfUserExists(user.uid);
           console.log("[AuthState] User exists?", exists);
           
@@ -476,3 +471,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+export { utils };
+export { AuthError, NetworkError, checkIfUserExists, UIStateManager, CONFIG };

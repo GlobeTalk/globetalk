@@ -1,14 +1,14 @@
 import { signInWithGoogle, observeUser } from "../../services/firebase.js";
 import { isBannedUser, isAdmin } from "../../services/admin.js"; 
 
-// Constants and Configuration
+// ------------------ CONFIGURATION ------------------
 const CONFIG = {
   API_BASE_URL: 'https://binarybandits-auth.onrender.com/api',
   PAGES: {
-    LOGIN: '../../../pages/login.html',
-    DASHBOARD: '../../../pages/userdashboard.html',
-    ONBOARDING: '../../../pages/onboarding.html',
-    ADMIN_DASHBOARD: '../../../pages/admin.html' 
+    LOGIN: './pages/login.html',          // updated for dist/ folder
+    DASHBOARD: './pages/userdashboard.html',
+    ONBOARDING: './pages/onboarding.html',
+    ADMIN_DASHBOARD: './pages/admin.html' 
   },
   STORAGE_KEYS: {
     ID_TOKEN: 'idToken',
@@ -22,7 +22,7 @@ const CONFIG = {
   }
 };
 
-// Error handling with custom error types
+// ------------------ ERROR CLASSES ------------------
 class AuthError extends Error {
   constructor(message, code, details = {}) {
     super(message);
@@ -41,7 +41,7 @@ class NetworkError extends Error {
   }
 }
 
-// Utility functions (unchanged except for safeNavigate)
+// ------------------ UTILITY FUNCTIONS ------------------
 const utils = {
   setSecureToken(token, expirationHours = 1) {
     const expiration = Date.now() + (expirationHours * 60 * 60 * 1000);
@@ -75,13 +75,12 @@ const utils = {
       if (loadingElement) {
         loadingElement.style.display = 'block';
       }
-      
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      if (!url || !url.startsWith('../')) {
+
+      if (!url || !url.startsWith('./')) {
         throw new Error('Invalid navigation URL');
       }
-      
+
       window.location.href = url;
     } catch (error) {
       console.error('Navigation error:', error);
@@ -125,7 +124,7 @@ const utils = {
   }
 };
 
-// User existence check (unchanged)
+// ------------------ CHECK IF USER EXISTS ------------------
 async function checkIfUserExists(userId) {
   try {
     const sanitizedUserId = utils.sanitizeUserId(userId);
@@ -153,15 +152,10 @@ async function checkIfUserExists(userId) {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new NetworkError(
-            `Server error: ${response.status}`, 
-            response.status, 
-            errorData
-          );
+          throw new NetworkError(`Server error: ${response.status}`, response.status, errorData);
         }
 
         const data = await response.json();
-        
         if (typeof data.exists !== 'boolean') {
           throw new AuthError('Invalid server response format', 'INVALID_RESPONSE');
         }
@@ -183,7 +177,7 @@ async function checkIfUserExists(userId) {
   }
 }
 
-// UI State Manager (unchanged)
+// ------------------ UI STATE MANAGER ------------------
 class UIStateManager {
   constructor() {
     this.loadingStates = new Set();
@@ -243,7 +237,7 @@ class UIStateManager {
   }
 }
 
-// Main application logic
+// ------------------ MAIN APPLICATION ------------------
 document.addEventListener("DOMContentLoaded", () => {
   const loginBtn = document.getElementById("loginBtn");
   const privacyCheckbox = document.getElementById("privacy");
@@ -263,12 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const currentlyAccepted = privacyCheckbox.checked && consentCheckbox.checked;
       
       loginBtn.disabled = !(returningUser || currentlyAccepted);
-      
-      if (loginBtn.disabled && !returningUser) {
-        loginBtn.title = "Please accept both privacy policy and consent terms";
-      } else {
-        loginBtn.title = "Sign in with Google";
-      }
+      loginBtn.title = loginBtn.disabled ? "Please accept both privacy policy and consent terms" : "Sign in with Google";
     } catch (error) {
       console.error('Error updating button state:', error);
     }
@@ -278,10 +267,8 @@ document.addEventListener("DOMContentLoaded", () => {
   privacyCheckbox.addEventListener("change", updateButtonState);
   consentCheckbox.addEventListener("change", updateButtonState);
 
-  // Google Login Flow
   loginBtn.addEventListener("click", async (event) => {
     event.preventDefault();
-
     if (loginBtn.disabled) return;
 
     uiManager.setLoading(loginBtn, true, 'Signing in...');
@@ -294,86 +281,33 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new AuthError('Please accept both privacy policy and consent terms', 'POLICIES_NOT_ACCEPTED');
       }
 
-      const signInPromise = signInWithGoogle();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new AuthError('Sign-in timeout', 'SIGNIN_TIMEOUT')), 30000)
-      );
-      
-      const { user } = await Promise.race([signInPromise, timeoutPromise]);
-      if (!user || !user.uid) {
-        throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
-      }
+      const { user } = await signInWithGoogle();
 
-      // Get token before calling admin.js functions
-      const idToken = await utils.retryOperation(async () => {
-        const token = await user.getIdToken(true);
-        if (!token) {
-          throw new AuthError('Failed to get authentication token', 'TOKEN_FAILED');
-        }
-        return token;
-      });
+      if (!user || !user.uid) throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
 
-      // Check if user is banned
-      const isBanned = await isBannedUser(user.uid, idToken); // <-- Pass token here!
-      if (isBanned) {
-        throw new AuthError('Your account is banned.', 'USER_BANNED');
-      }
+      const idToken = await utils.retryOperation(() => user.getIdToken(true));
+
+      const banned = await isBannedUser(user.uid, idToken);
+      if (banned) throw new AuthError('Your account is banned.', 'USER_BANNED');
 
       utils.setSecureToken(idToken);
       localStorage.setItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED, "true");
 
-      uiManager.showMessage(`Welcome, ${user.displayName}!`, 'success');
-      uiManager.setLoading(loginBtn, true, 'Checking account...');
+      const adminUser = await isAdmin(user.uid, idToken);
+      const existingUser = await checkIfUserExists(user.uid);
 
-      // Check admin status
-      const isAdminUser = await isAdmin(user.uid, idToken); // <-- Pass token here!
-      const isExistingUser = await checkIfUserExists(user.uid);
-
-      // Navigate based on user status
-      if (isAdminUser) {
-        console.log("[Login] Admin user, redirecting to admin dashboard");
-        await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
-      } else if (isExistingUser === true) {
-        console.log("[Login] Existing user, redirecting to dashboard");
-        await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
-      } else if (isExistingUser === false) {
-        console.log("[Login] New user, redirecting to onboarding");
-        await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
-      }
+      if (adminUser) await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+      else if (existingUser) await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
+      else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
 
     } catch (error) {
       console.error("❌ Login failed:", error);
-      
-      let userMessage = "Login failed. Please try again.";
-      
-      if (error instanceof AuthError) {
-        switch (error.code) {
-          case 'POLICIES_NOT_ACCEPTED':
-            userMessage = "Please accept both privacy policy and consent terms.";
-            break;
-          case 'SIGNIN_TIMEOUT':
-            userMessage = "Sign-in timed out. Please check your connection and try again.";
-            break;
-          case 'NO_TOKEN':
-            userMessage = "Authentication failed. Please refresh the page and try again.";
-            break;
-          case 'USER_BANNED':
-            userMessage = "Your account has been banned. Please contact support.";
-            break;
-          default:
-            userMessage = error.message || userMessage;
-        }
-      } else if (error instanceof NetworkError) {
-        if (error.status >= 500) {
-          userMessage = "Server error. Please try again later.";
-        } else if (error.status === 401) {
-          userMessage = "Authentication failed. Please refresh the page and try again.";
-        } else {
-          userMessage = "Network error. Please check your connection.";
-        }
-      }
-      
-      uiManager.showMessage(userMessage, 'error');
+      let msg = "Login failed. Please try again.";
+
+      if (error instanceof AuthError) msg = error.message;
+      else if (error instanceof NetworkError) msg = error.status >= 500 ? "Server error" : "Network error";
+
+      uiManager.showMessage(msg, 'error');
     } finally {
       uiManager.setLoading(loginBtn, false);
     }
@@ -386,90 +320,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Auth state observer
   observeUser(async (user) => {
-    if (authStateObserverActive) {
-      console.log("[AuthState] Observer already active, skipping...");
-      return;
-    }
-    
+    if (authStateObserverActive) return;
     authStateObserverActive = true;
-    
+
     try {
-      console.log("[AuthState] Auth state changed. User:", user ? user.email : "null");
-      
-      if (user) {
-        if (!user.uid || !user.email) {
-          throw new AuthError('Invalid user object received', 'INVALID_USER_OBJECT');
-        }
-
-        const idToken = await utils.retryOperation(async () => {
-          return await user.getIdToken(true);
-        });
-        utils.setSecureToken(idToken);
-
-        if (localStorage.getItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED) === "true") {
-          // Check if user is banned
-          const isBanned = await isBannedUser(user.uid, idToken); // <-- Pass token here!
-          if (isBanned) {
-            console.log("[AuthState] User is banned, redirecting to login");
-            localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
-            localStorage.removeItem(CONFIG.STORAGE_KEYS.POLICIES_ACCEPTED);
-            uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
-            await utils.safeNavigate(CONFIG.PAGES.LOGIN);
-            return;
-          }
-
-          // Check admin status
-          const isAdminUser = await isAdmin(user.uid, idToken); // <-- Pass token here!
-          const exists = await checkIfUserExists(user.uid);
-          console.log("[AuthState] User exists?", exists);
-          
-          if (isAdminUser) {
-            alert("Admin login detected. Redirecting to admin dashboard.");
-            console.log("[AuthState] Redirecting to admin dashboard");
-            await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
-          } else if (exists === true) {
-            console.log("[AuthState] Redirecting to dashboard");
-            await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
-          } else if (exists === false) {
-            console.log("[AuthState] Redirecting to onboarding");
-            await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
-          }
-        }
-      } else {
-        console.log("🚪 Not logged in");
+      if (!user) {
         localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
-        
-        if (!window.location.pathname.endsWith("login.html")) {
-          console.log("Redirecting to login page");
-          await utils.safeNavigate(CONFIG.PAGES.LOGIN);
-        }
-      }
-    } catch (error) {
-      console.error("[AuthState] Error in auth state observer:", error);
-      
-      if (error instanceof AuthError && error.code === 'NAVIGATION_ERROR') {
-        uiManager.showMessage("Navigation error. Please refresh the page.", 'error');
-      } else if (error instanceof AuthError && error.code === 'USER_BANNED') {
-        uiManager.showMessage("Your account has been banned. Please contact support.", 'error');
         await utils.safeNavigate(CONFIG.PAGES.LOGIN);
+        return;
       }
+
+      const idToken = await utils.retryOperation(() => user.getIdToken(true));
+      utils.setSecureToken(idToken);
+
+      const banned = await isBannedUser(user.uid, idToken);
+      if (banned) throw new AuthError('Your account has been banned.', 'USER_BANNED');
+
+      const adminUser = await isAdmin(user.uid, idToken);
+      const exists = await checkIfUserExists(user.uid);
+
+      if (adminUser) await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
+      else if (exists) await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
+      else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+
+    } catch (error) {
+      console.error("[AuthState] Error:", error);
     } finally {
       authStateObserverActive = false;
     }
   });
 
-  window.addEventListener('beforeunload', () => {
-    authStateObserverActive = false;
-  });
+  window.addEventListener('beforeunload', () => authStateObserverActive = false);
 
   window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason);
-    if (event.reason instanceof AuthError || event.reason instanceof NetworkError) {
-      uiManager.showMessage('An unexpected error occurred. Please refresh the page.', 'error');
-    }
+    uiManager.showMessage('An unexpected error occurred. Please refresh the page.', 'error');
   });
 });
+
 export { utils };
 export { AuthError, NetworkError, checkIfUserExists, UIStateManager, CONFIG };

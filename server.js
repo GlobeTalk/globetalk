@@ -1,25 +1,29 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import cors from "cors";
+import userRoutes from "./src/services/auth/server/routes/users.js"; // ✅ ADD THIS!
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ✅ Serve your homepage directly from root
+// ✅ MIDDLEWARE:
+app.use(cors());
+app.use(express.json());
 app.use(express.static(__dirname));
 
-// ✅ Serve JS and CSS from your src/frontend folders
+// ✅ SERVE FRONTEND:
 app.use("/scripts", express.static(path.join(__dirname, "src/frontend/scripts")));
 app.use("/styles", express.static(path.join(__dirname, "src/frontend/styles")));
-
-// ✅ Root route
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Health check for Azure
-app.get("/health", (req, res) => res.send("Frontend is live!"));
+// ✅ ADD ONLY AUTH API:
+app.use("/api/users", userRoutes);
 
-// ✅ Start server
+// ✅ Health check
+app.get("/health", (req, res) => res.send("🚀 Frontend + Auth API LIVE!"));
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Frontend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT} with Auth API`));

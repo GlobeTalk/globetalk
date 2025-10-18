@@ -1,3 +1,4 @@
+// ✅ CORRECT ORDER (copy-paste EXACTLY):
 import express from "express";
 import { saveUserProfile, getUserProfile, updateUserProfile, assignUsername } from "../controllers/profileController.js";
 import {admin} from "../firebaseAdmin.js";
@@ -18,7 +19,6 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// Apply middleware to all profile routes
 router.use(authMiddleware);
 
 // GET /api/profile - get own profile
@@ -32,12 +32,10 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     await saveUserProfile(req.uid, req.body);
-
     const profile = await getUserProfile(req.uid);
     if (!profile.username) {
       profile.username = await assignUsername(req.uid);
     }
-
     res.json({ message: "Profile saved", profile });
   } catch (err) {
     console.error(err);
@@ -52,8 +50,20 @@ router.patch("/", async (req, res) => {
   res.status(500).json({ error: "Failed to update profile" });
 });
 
+// ✅ #1: EXISTS ROUTE FIRST!
+router.get('/:userId/exists', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    const exists = userDoc.exists;
+    res.json({ success: true, exists });
+  } catch (err) {
+    console.error('Check user exists error:', err);
+    res.status(500).json({ success: false, error: 'Failed to check user existence' });
+  }
+});
 
-// GET /api/profile/:userId - fetch any user's profile by userId
+// ✅ #2: PROFILE ROUTE SECOND!
 router.get('/:userId', async (req, res) => {
   const { userId } = req.params;
   try {

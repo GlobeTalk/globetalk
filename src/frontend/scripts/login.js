@@ -140,7 +140,7 @@ async function checkIfUserExists(userId) {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/users/${sanitizedUserId}/exists`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/profile/${sanitizedUserId}/exists`, {
           method: 'GET',
           headers: {
             "Authorization": `Bearer ${token}`,

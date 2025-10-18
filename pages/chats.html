@@ -39,6 +39,15 @@
       <div class="chat-header" id="chatHeader">
         <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
         <span id="chatHeaderText">Select a chat to start messaging</span>
+        <div class="chat-menu-container" style="display:inline-block; position:relative; float:right;">
+          <button id="chatMenuBtn" class="chat-menu-btn" aria-label="More options" style="background:none; border:none; cursor:pointer; font-size:22px; padding:4px 8px;">
+            &#8942;
+          </button>
+          <div id="chatMenuDropdown" class="chat-menu-dropdown" style="display:none; position:absolute; right:0; top:32px; background:#fff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.08); min-width:120px; z-index:10;">
+            <button id="blockUserBtn" class="chat-menu-item" style="width:100%; background:none; border:none; padding:10px 16px; text-align:left; cursor:pointer; color:#ef4444;">Block</button>
+            <button id="flagUserBtn" class="chat-menu-item" style="width:100%; background:none; border:none; padding:10px 16px; text-align:left; cursor:pointer; color:#f59e42;">Flag</button>
+          </div>
+        </div>
       </div>
       <div class="messages" id="messages" aria-live="polite">
         <div class="no-messages"><span class="empty-icon">💬</span> Select a conversation to view messages</div>
@@ -137,8 +146,18 @@
     // Emoji picker functionality
     emojiButton.addEventListener('click', () => {
       emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+      // Add back button if not already present
+      if (!document.getElementById('emojiBackBtn')) {
+        const backBtn = document.createElement('button');
+        backBtn.id = 'emojiBackBtn';
+        backBtn.textContent = 'Back';
+        backBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:2;background:#e5e7eb;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:1rem;';
+        backBtn.onclick = () => { emojiPicker.style.display = 'none'; };
+        emojiPicker.appendChild(backBtn);
+      }
     });
 
+    // Do NOT hide the picker on emoji click anymore
     emojiPicker.addEventListener('emoji-click', event => {
       const emoji = event.detail.unicode;
       const textarea = messageInput;
@@ -148,12 +167,16 @@
       textarea.value = text.slice(0, start) + emoji + text.slice(end);
       textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
       textarea.focus();
-      emojiPicker.style.display = 'none';
+      // emojiPicker.style.display = 'none'; // <-- REMOVE or COMMENT OUT this line
     });
 
-    // Close emoji picker when clicking outside
+    // Close emoji picker when clicking outside or on back button
     document.addEventListener('click', (event) => {
-      if (!emojiPicker.contains(event.target) && event.target !== emojiButton) {
+      if (
+        emojiPicker.style.display === 'block' &&
+        !emojiPicker.contains(event.target) &&
+        event.target !== emojiButton
+      ) {
         emojiPicker.style.display = 'none';
       }
     });
@@ -399,12 +422,40 @@
 
     async function selectChat(chat) {
       selectedChat = chat;
+      const localChat = chats.find(c => c.chatId === selectedChat.chatId);
+  if (localChat?.lastMessage) {
+    localChat.lastMessage.status = "read";
+  }
       messages = [];
       messagesNextPage = null;
-  // Find the other participant and display their username
-  const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
+
+      const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
+      const otherUid = otherParticipant ? otherParticipant.uid : null;
       const displayName = otherParticipant ? otherParticipant.username : "Unknown";
+      let isBlocked = false;
+      let isBanned = false;
+
+      // Check if user is blocked
+      try {
+        const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
+        isBlocked = Array.isArray(res.blocked) && otherUid && res.blocked.includes(otherUid);
+      } catch (e) {
+        isBlocked = false;
+      }
+
+      // --- Check if user is banned ---
+      if (otherUid) {
+        try {
+          const bannedRes = await apiFetch(`/api/moderation/isBanned/${otherUid}`);
+          isBanned = bannedRes && bannedRes.banned;
+        } catch (e) {
+          isBanned = false;
+        }
+      }
+
+      // Render header
       chatHeader.innerHTML = `
+        <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
         <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
             <circle cx="16" cy="16" r="16" fill="#e0e7ff"/>
@@ -412,19 +463,73 @@
             <ellipse cx="16" cy="25" rx="10" ry="6" fill="#a5b4fc"/>
           </svg>
         </span>
-        <span style="vertical-align:middle;">${escapeHtml(displayName)}</span>`;
-  // Find the other participant and display their username
-  const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
-      const displayName = otherParticipant ? otherParticipant.username : "Unknown";
-      chatHeader.innerHTML = `
-        <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
-            <circle cx="16" cy="16" r="16" fill="#e0e7ff"/>
-            <ellipse cx="16" cy="13" rx="7" ry="7" fill="#6366f1"/>
-            <ellipse cx="16" cy="25" rx="10" ry="6" fill="#a5b4fc"/>
-          </svg>
+        <span style="vertical-align:middle; color:${isBlocked ? '#ef4444' : isBanned ? '#b91c1c' : 'inherit'}; font-weight:${isBlocked || isBanned ? '600' : 'inherit'};">
+          ${escapeHtml(displayName)}
+          ${isBlocked ? ' <span style="color:#ef4444;font-weight:600">(Blocked)</span>' : ''}
+          ${isBanned ? ' <span style="color:#b91c1c;font-weight:600">(Banned)</span>' : ''}
         </span>
-        <span style="vertical-align:middle;">${escapeHtml(displayName)}</span>`;
+        <button id="blockUserBtn" style="margin-left:16px;padding:7px 18px;background:${isBlocked ? '#f3f4f6' : '#ef4444'};color:${isBlocked ? '#ef4444' : '#fff'};border:none;border-radius:5px;cursor:pointer;float:right;min-width:90px;">${isBlocked ? 'Unblock' : 'Block'}</button>
+      `;
+
+      // Attach block/unblock logic to the single button
+      const blockBtn = document.getElementById('blockUserBtn');
+      if (blockBtn) blockBtn.onclick = async () => {
+        if (!otherUid) return;
+        try {
+          if (isBlocked) {
+            await apiFetch(`/api/moderation/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
+          } else {
+            await apiFetch(`/api/moderation/block`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
+          }
+          await selectChat(chat); // re-render
+        } catch (err) {
+          alert('Failed to update block status: ' + err);
+        }
+      };
+
+      // --- Disable send button if banned ---
+      if (isBanned) {
+        sendButton.disabled = true;
+        chatForm.disabled = true;
+  // Prevent any form submission
+        chatForm.onsubmit = (e) => e.preventDefault();
+        sendButton.onclick = (e) => e.preventDefault();
+        sendButton.textContent = "User is banned";
+        sendButton.style.background = "#b91c1c";
+        sendButton.style.color = "#fff";
+        messagesDiv.innerHTML = '<div class="no-messages" style="color:#b91c1c;font-weight:600"><span class="empty-icon">🚫</span> This user has been banned. You cannot send messages.</div>';
+        return;
+      }
+
+      // Update send button if blocked
+      sendButton.textContent = isBlocked ? 'Unblock' : 'Send';
+      // Ensure the form and button are re-enabled for non-banned chats
+      sendButton.disabled = false;
+      chatForm.disabled = false;
+      // Restore the form submit handler (same behavior as the global handler)
+      chatForm.onsubmit = async e => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text) return;
+        await sendMessage(text);
+      };
+      // Reset any button inline styles applied for the banned state
+      sendButton.style.background = '';
+      sendButton.style.color = '';
+      sendButton.onclick = null;
+
+      if (isBlocked) {
+        sendButton.onclick = async (e) => {
+          e.preventDefault();
+          if (!otherUid) return;
+          try {
+            await apiFetch(`/api/moderation/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
+            await selectChat(chat); // re-render
+          } catch (err) {
+            alert('Failed to unblock user.');
+          }
+        };
+      }
       await renderChatList();
       await loadMessages(chat);
     }
@@ -435,31 +540,35 @@
         chatList.innerHTML = '<div class="no-chat"><span class="empty-icon">🗨️</span> No chats yet. Start a conversation from your dashboard!</div>';
         return;
       }
+      // Fetch blocked list once for all chats
+      let blockedList = [];
+      try {
+        const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
+        blockedList = Array.isArray(res.blocked) ? res.blocked : [];
+      } catch (e) {
+        blockedList = [];
+      }
       chatList.innerHTML = "";
       for (const chat of chats) {
-        // Find the other participant and display their username
         const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
+        const otherUid = otherParticipant ? otherParticipant.uid : null;
         const otherUser = otherParticipant ? otherParticipant.username : "Unknown";
-        //const preview = chat.lastMessage?.text || "No messages yet";
-        // Find the other participant and display their username
-        const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
-        const otherUser = otherParticipant ? otherParticipant.username : "Unknown";
-        //const preview = chat.lastMessage?.text || "No messages yet";
+        const isBlocked = otherUid && blockedList.includes(otherUid);
+       const isUnread = chat.lastMessage?.status === "unread" && chat.lastMessage?.senderId !== CURRENT_UID;
+        
         const div = document.createElement("div");
         div.className = "chat-item" + (selectedChat?.chatId === chat.chatId ? " active" : "");
         div.setAttribute('tabindex', '0');
         div.setAttribute('role', 'button');
         div.setAttribute('aria-label', `Chat with ${otherUser}`);
-        //<div class="chat-preview">${escapeHtml(preview)}</div>
-        div.setAttribute('tabindex', '0');
-        div.setAttribute('role', 'button');
-        div.setAttribute('aria-label', `Chat with ${otherUser}`);
-        //<div class="chat-preview">${escapeHtml(preview)}</div>
         div.innerHTML = `
-          <div class="chat-user">${escapeHtml(otherUser)}</div>
-          
-          
-        `;
+          <div class="chat-user" style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+           <span class="username" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+           ${escapeHtml(otherUser)}${isBlocked ? ' (Blocked)' : ''}
+          </span>
+           ${isUnread ? `<span class="unread-dot" style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:#c084fc;"></span>` : ""}
+             </div>
+           `;
         div.onclick = () => {
           if (!selectedChat || selectedChat.chatId !== chat.chatId) {
             selectChat(chat);
@@ -481,15 +590,29 @@
     }
 
     async function renderMessages() {
-      if (!messages.length) {
-        messagesDiv.innerHTML = '<div class="no-messages"><span class="empty-icon">💬</span> No messages yet. Start the conversation!</div>';
-        messagesDiv.innerHTML = '<div class="no-messages"><span class="empty-icon">💬</span> No messages yet. Start the conversation!</div>';
+      // Check if blocked
+      let isBlocked = false;
+      if (selectedChat) {
+        const otherParticipant = selectedChat.participants.find(p => p.uid !== CURRENT_UID);
+        const otherUid = otherParticipant ? otherParticipant.uid : null;
+        try {
+          const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
+          isBlocked = Array.isArray(res.blocked) && otherUid && res.blocked.includes(otherUid);
+        } catch (e) {
+          isBlocked = false;
+        }
+      }
+      if (!messages.length || isBlocked) {
+        messagesDiv.innerHTML = isBlocked
+          ? '<div class="no-messages" style="color:#ef4444;font-weight:600"><span class="empty-icon">🚫</span> You have blocked this user. Unblock to view messages.</div>'
+          : '<div class="no-messages"><span class="empty-icon">💬</span> No messages yet. Start the conversation!</div>';
         return;
       }
       const shouldScrollToBottom = messagesDiv.scrollTop + messagesDiv.clientHeight >= messagesDiv.scrollHeight - 100;
       messagesDiv.innerHTML = "";
       for (const msg of messages) {
         const div = document.createElement("div");
+        const isOtherUser = msg.senderId !== CURRENT_UID;
         div.className = "message" + (msg.senderId === CURRENT_UID ? " me" : "");
         // add the following line in div.InnerHTML if you want to show sender name
         // <div class="message-sender">${escapeHtml(senderName)}</div>
@@ -497,6 +620,66 @@
           <div class="message-text">${escapeHtml(msg.text)}</div>
           <div class="timestamp">${formatTime(msg.timestamp)}</div>
         `;
+        if (isOtherUser) {
+          div.style.cursor = 'pointer';
+          div.title = 'Click to flag this message';
+          div.onclick = () => {
+            import('../src/frontend/scripts/chatModal.js').then(({ showModal }) => {
+              let reason = '';
+              showModal({
+                title: 'Flag Message',
+                content: `<div style='margin-bottom:8px;'>Flag this message as inappropriate?</div><div style='background:#f3f4f6;padding:8px;border-radius:5px;margin-bottom:10px;'>${escapeHtml(msg.text)}</div><textarea id='flag-reason' placeholder='Reason (optional)' style='width:100%;min-height:48px;resize:vertical;'></textarea>`,
+                confirmText: 'Flag',
+                cancelText: 'Cancel',
+                onConfirm: async () => {
+                  const textarea = document.getElementById('flag-reason');
+                  reason = textarea ? textarea.value.trim() : '';
+                  try {
+                    const otherParticipant = selectedChat.participants.find(p => p.uid !== CURRENT_UID);
+                    const reportedUid = otherParticipant ? otherParticipant.uid : null;
+                    const reportedUsername = otherParticipant ? otherParticipant.username : null;
+                    // Use current user's username from selectedChat or userCache
+                    let reporterUsername = null;
+                    if (selectedChat && Array.isArray(selectedChat.participants)) {
+                      const me = selectedChat.participants.find(p => p.uid === CURRENT_UID);
+                      reporterUsername = me && me.username ? me.username : null;
+                    }
+                    if (!reporterUsername && userCache && userCache[CURRENT_UID]) {
+                      reporterUsername = userCache[CURRENT_UID];
+                    }
+                    const response = await fetch('/api/moderation/report', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ID_TOKEN}`
+                      },
+                      body: JSON.stringify({
+                        reporterUid: CURRENT_UID,
+                        reporterUsername,
+                        reportedUid,
+                        reportedUsername,
+                        flaggedMessage: msg.text,
+                        reason,
+                        messageId: msg.id
+                      })
+                    });
+                    if (response.status === 409) {
+                      alert('This message has already been reported.');
+                      return;
+                    }
+                    if (!response.ok) {
+                      const data = await response.json().catch(() => ({}));
+                      throw new Error(data.error || 'Failed to flag user');
+                    }
+                    alert('User reported');
+                  } catch (err) {
+                    alert('Failed to flag user ' + (err.message || err));
+                  }
+                }
+              });
+            });
+          };
+        }
         messagesDiv.appendChild(div);
         div.classList.add('fade-in');
         div.classList.add('fade-in');
@@ -575,6 +758,8 @@
         sendButton.disabled = !messageInput.value.trim();
       }
     });
+    // Import modal utility for flagging
+    import("../src/frontend/scripts/chatModal.js");
   </script>
 </body>
 </html>

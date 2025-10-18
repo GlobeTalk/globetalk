@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GlobeTalk - Settings & Safety</title>
     <link rel="stylesheet" href="../src/frontend/styles/settings.css" />
-   
   </head>
 
   <body>
@@ -28,7 +27,7 @@
 
       <div class="settings-box">
         <div class="user-info">
-          <p><strong id="username">User123</strong></p>
+          <p><strong id="username">Loading...</strong></p>
         </div>
         <hr />
 
@@ -94,13 +93,10 @@
           </select>
           <label for="gender">Gender:</label>
 
-          <select id="gender" name="gender" required>
+          <select id="gender" name="gender">
             <option value="">Select your gender</option>
-
             <option value="male">Male</option>
-
             <option value="female">Female</option>
-
             <option value="non-binary">Non-binary</option>
           </select>
 
@@ -129,6 +125,6 @@
         </form>
       </div>
     </section>
-    <!--<script src="src/frontend/settings.js"></script>-->
+    <script type="module" src="../src/frontend/scripts/settings.js"></script>
   </body>
 </html>

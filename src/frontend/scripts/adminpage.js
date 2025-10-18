@@ -298,14 +298,14 @@ function formatDate(timestamp) {
 }
 
 // --- Admin Operations ---
-async function getAdminCounts() {
+async function getAdminCounts(idToken) {
   try {
     appState.setState('isLoading', true);
-    
+
     const [active, reported, banned] = await Promise.allSettled([
-      retryOperation(() => getActiveUserCount()),
-      retryOperation(() => getReportedUserCount()),
-      retryOperation(() => getBannedUserCount())
+      retryOperation(() => getActiveUserCount(idToken)),
+      retryOperation(() => getReportedUserCount(idToken)),
+      retryOperation(() => getBannedUserCount(idToken))
     ]);
 
     const counts = {
@@ -328,7 +328,7 @@ async function getAdminCounts() {
   }
 }
 
-async function performBanUser(userId,reporterUid, reportId, report, reason, reportedDate) {
+async function performBanUser(userId, reporterUid, reportId, report, reason, reportedDate, idToken) {
   if (!validateUserId(userId)) {
     throw new AppError('Invalid user ID', 'VALIDATION_ERROR');
   }
@@ -339,33 +339,52 @@ async function performBanUser(userId,reporterUid, reportId, report, reason, repo
   }
 
   try {
-    const result = await retryOperation(async () => {
-      const adminId = (auth.currentUser && auth.currentUser.uid) || null;
-      return await banUser(userId, reporterUid, reportId, report, sanitizedReason, reportedDate, adminId);
-    });
-
-    if (!result || !result.success) {
-      throw new AppError('Ban operation failed', 'BAN_FAILED');
+    let lastError;
+    for (let attempt = 1; attempt <= CONFIG.MAX_RETRIES; attempt++) {
+      try {
+        const adminId = (auth.currentUser && auth.currentUser.uid) || null;
+        const result = await banUser(userId, reporterUid, reportId, report, sanitizedReason, reportedDate, adminId, idToken);
+        if (result && result.success) {
+          Logger.info('User banned successfully:', { userId, reportId });
+          showNotification(`User ${userId} has been banned successfully.`, 'success');
+          return result;
+        } else if (result && result.error === "User is already banned.") {
+          showNotification("User is already banned.", "warning");
+          Logger.warn("User is already banned.", result);
+          return result;
+        } else {
+          throw new AppError(result?.error || 'Ban operation failed', 'BAN_FAILED');
+        }
+      } catch (error) {
+        lastError = error;
+        // Stop retrying if already banned
+        if (error?.message?.includes("already banned")) {
+          showNotification("User is already banned.", "warning");
+          Logger.warn("User is already banned.", error);
+          return { success: false, error: "User is already banned." };
+        }
+        Logger.warn(`Attempt ${attempt} failed:`, error.message);
+        if (attempt < CONFIG.MAX_RETRIES) {
+          const delay = CONFIG.RETRY_DELAY * attempt;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
-
-    Logger.info('User banned successfully:', { userId, reportId });
-    showNotification(`User ${userId} has been banned successfully.`, 'success');
-    
-    return result;
+    throw lastError;
   } catch (error) {
     Logger.error('Ban user error:', { userId, error });
     throw new AppError('Failed to ban user', 'BAN_FAILED', error);
   }
 }
 
-async function performUnbanUser(userId) {
+async function performUnbanUser(userId, idToken) {
   if (!validateUserId(userId)) {
     throw new AppError('Invalid user ID', 'VALIDATION_ERROR');
   }
 
   try {
     const result = await retryOperation(async () => {
-      return await unbanUser(userId);
+      return await unbanUser(userId, null, idToken);
     });
 
     if (!result || !result.success) {
@@ -374,7 +393,7 @@ async function performUnbanUser(userId) {
 
     Logger.info('User unbanned successfully:', { userId });
     showNotification(`User ${userId} has been unbanned successfully.`, 'success');
-    
+
     return result;
   } catch (error) {
     Logger.error('Unban user error:', { userId, error });
@@ -382,8 +401,365 @@ async function performUnbanUser(userId) {
   }
 }
 
-// --- Toggle Container ---
-function createToggleContainer() {
+async function performDissmissReport(reportId, reason, idToken) {
+  if (!validateUserId(reportId)) {
+    throw new AppError('Invalid report ID', 'VALIDATION_ERROR');
+  }
+  const sanitizedReason = sanitizeInput(reason);
+  if (!sanitizedReason) {
+    throw new AppError('Dismiss reason is required', 'VALIDATION_ERROR');
+  }
+  try {
+    const adminId = (auth.currentUser && auth.currentUser.uid) || null;
+    const result = await retryOperation(async () => {
+      return await dissmissReport(reportId, sanitizedReason, adminId, idToken); // <-- Pass idToken here!
+    });
+    if (!result || !result.success) {
+      throw new AppError('Dismiss operation failed', 'DISMISS_FAILED');
+    }
+    Logger.info('Report dismissed successfully:', { reportId });
+    return result;
+  } catch (error) {
+    Logger.error('Dismiss report error:', { reportId, error });
+    throw new AppError('Failed to dismiss report', 'DISMISS_FAILED', error);
+  }
+}
+
+// --- Reports Rendering ---
+async function renderReports(type, idToken) {
+  const container = document.getElementById("reportedUsersList");
+  if (!container) {
+    Logger.error('Reports container not found');
+    return;
+  }
+
+  showLoadingSpinner(container, `Loading ${type} reports...`);
+
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new AppError('Request timed out', 'TIMEOUT')), CONFIG.LOADING_TIMEOUT)
+    );
+
+    const reportPromise = type === "unresolved"
+      ? getUnresolvedReports(idToken)
+      : getResolvedReports(idToken);
+
+    const reports = await Promise.race([reportPromise, timeout]);
+
+    if (!reports || reports.empty) {
+      container.innerHTML = `
+        <div style="padding:3rem;text-align:center;color:#666;">
+          <div style="font-size:1.2rem;margin-bottom:0.5rem;">No ${type} reports found</div>
+          <div style="font-size:0.9rem;">All clear! 🎉</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    
+    // Sort reports by date (newest first)
+    reports.sort((a, b) => {
+      const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
+      const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
+      return timeB - timeA;
+    });
+
+    reports.forEach((data) => {
+      const reportID = data.id;
+      const reportedUid = data.reportedUid || 'Unknown User';
+      const reporterUid = data.reporterUid || "Unknown Reporter";
+      const reportedUsername = data.reportedUsername || reportedUid;
+      const reporterUsername = data.reporterUsername || reporterUid;
+      const report = data.reason || data.report || 'No reason provided';
+      const flaggedMessage = data.flaggedMessage || '';
+      const dateStr = formatDate(data.timestamp);
+
+      // New card style for both unresolved and resolved reports
+      const card = document.createElement('div');
+      card.className = 'content-item';
+      card.style.background = 'linear-gradient(135deg, #232a3b 0%, #2b3a55 100%)';
+      card.style.border = '2px solid #4a90e2';
+      card.style.borderRadius = '18px';
+      card.style.boxShadow = '0 4px 24px rgba(74,144,226,0.12)';
+      card.style.padding = '2rem 2.5rem';
+      card.style.marginBottom = '0';
+
+      const flex = document.createElement('div');
+      flex.style.display = 'flex';
+      flex.style.alignItems = 'center';
+      flex.style.gap = '2rem';
+
+      // User info
+      const info = document.createElement('div');
+      info.style.flex = '1';
+
+      // --- Reported User ---
+      const reportedUserBlock = document.createElement('div');
+      reportedUserBlock.style.marginBottom = '0.3rem';
+      reportedUserBlock.innerHTML = `
+        <div style="font-size:1.1rem;color:#fff;font-weight:600;">
+          ${reportedUsername !== reportedUid ? `${sanitizeInput(reportedUsername)}<br><span style="font-size:0.95rem;color:#b0b0b0;">${sanitizeInput(reportedUid)}</span>` : sanitizeInput(reportedUid)}
+        </div>
+      `;
+      info.appendChild(reportedUserBlock);
+
+      // --- Reporter User ---
+      const reporterUserBlock = document.createElement('div');
+      reporterUserBlock.style.marginBottom = '0.3rem';
+      reporterUserBlock.innerHTML = `
+        <div style="font-size:1.05rem;color:#b0b0b0;">
+          Reported By: ${reporterUsername !== reporterUid ? `${sanitizeInput(reporterUsername)}<br><span style="font-size:0.95rem;color:#b0b0b0;">${sanitizeInput(reporterUid)}</span>` : sanitizeInput(reporterUid)}
+        </div>
+      `;
+      info.appendChild(reporterUserBlock);
+
+      // --- Date ---
+      const date = document.createElement('div');
+      date.style.fontSize = '1rem';
+      date.style.color = '#4a90e2';
+      date.style.marginTop = '0.5rem';
+      date.textContent = `Date: ${dateStr}`;
+      info.appendChild(date);
+
+      const reportLabel = document.createElement('div');
+      reportLabel.style.fontWeight = '500';
+      reportLabel.style.color = '#fff';
+      reportLabel.style.margin = '0.7rem 0 0.3rem 0';
+      reportLabel.textContent = 'Report:';
+
+      const reportContent = document.createElement('div');
+      reportContent.style.color = '#b0b0b0';
+      reportContent.style.lineHeight = '1.4';
+      reportContent.style.background = 'rgba(74,144,226,0.08)';
+      reportContent.style.padding = '0.75rem';
+      reportContent.style.borderRadius = '8px';
+      reportContent.style.wordBreak = 'break-word';
+      reportContent.textContent = sanitizeInput(report);
+
+      info.appendChild(reportLabel);
+      info.appendChild(reportContent);
+
+      // --- Show flagged message if present ---
+      if (flaggedMessage) {
+        const flaggedLabel = document.createElement('div');
+        flaggedLabel.style.fontWeight = '500';
+        flaggedLabel.style.color = '#fff';
+        flaggedLabel.style.margin = '0.7rem 0 0.3rem 0';
+        flaggedLabel.textContent = 'Flagged Message:';
+
+        const flaggedContent = document.createElement('div');
+        flaggedContent.style.color = '#f44336';
+        flaggedContent.style.lineHeight = '1.4';
+        flaggedContent.style.background = 'rgba(244,67,54,0.08)';
+        flaggedContent.style.padding = '0.75rem';
+        flaggedContent.style.borderRadius = '8px';
+        flaggedContent.style.wordBreak = 'break-word';
+        flaggedContent.textContent = sanitizeInput(flaggedMessage);
+
+        info.appendChild(flaggedLabel);
+        info.appendChild(flaggedContent);
+      }
+
+      // Resolved details
+      if (type === 'resolved') {
+        const outcome = document.createElement('div');
+        outcome.style.marginTop = '0.5rem';
+        outcome.style.fontSize = '1rem';
+        outcome.style.color = '#4a90e2';
+        outcome.innerHTML = `<strong>Outcome:</strong> ${sanitizeInput(data.outcome || 'N/A')}`;
+        info.appendChild(outcome);
+
+        const outcomeReason = document.createElement('div');
+        outcomeReason.style.marginTop = '0.5rem';
+        outcomeReason.style.fontSize = '1rem';
+        outcomeReason.style.color = '#b0b0b0';
+        outcomeReason.innerHTML = `<strong>Outcome Reason:</strong> ${sanitizeInput(data.outcomeReason || 'N/A')}`;
+        info.appendChild(outcomeReason);
+
+        const resolvedBy = document.createElement('div');
+        resolvedBy.style.marginTop = '0.5rem';
+        resolvedBy.style.fontSize = '1rem';
+        resolvedBy.style.color = '#b0b0b0';
+        resolvedBy.innerHTML = `<strong>Resolved By:</strong> ${sanitizeInput(data.resolvedBy || 'N/A')}`;
+        info.appendChild(resolvedBy);
+
+        const resolvedAt = document.createElement('div');
+        resolvedAt.style.marginTop = '0.5rem';
+        resolvedAt.style.fontSize = '1rem';
+        resolvedAt.style.color = '#b0b0b0';
+        resolvedAt.innerHTML = `<strong>Resolved At:</strong> ${formatDate(data.resolvedAt)}`;
+        info.appendChild(resolvedAt);
+      }
+
+      flex.appendChild(info);
+
+      // Manage button (only for unresolved)
+      if (type === 'unresolved') {
+        const manageBtn = document.createElement('button');
+        manageBtn.className = 'manage-user-btn';
+        manageBtn.style.background = 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)';
+        manageBtn.style.color = '#fff';
+        manageBtn.style.fontWeight = '600';
+        manageBtn.style.border = 'none';
+        manageBtn.style.borderRadius = '10px';
+        manageBtn.style.padding = '0.8rem 2rem';
+        manageBtn.style.fontSize = '1rem';
+        manageBtn.textContent = 'Manage';
+        manageBtn.addEventListener('click', () => {
+          createUserModal(
+            {
+              userid: reportedUid,
+              username: reportedUsername,
+              dateStr,
+              report,
+              reportID,
+              flaggedMessage,
+              reporterUid,
+              reporterUsername
+            },
+            async (reason) => {
+              try {
+                const idToken = await auth.currentUser.getIdToken();
+                await performBanUser(reportedUid, reporterUid, reportID, report, reason, dateStr, idToken);
+                await renderReports('unresolved', idToken);
+                await getAdminCounts(idToken);
+                updateCountsDisplay();
+              } catch (error) {
+                throw error;
+              }
+            }
+          );
+        });
+        flex.appendChild(manageBtn);
+      }
+
+      card.appendChild(flex);
+      container.appendChild(card);
+    });
+
+    Logger.info(`Loaded ${reports.length} ${type} reports`);
+
+  } catch (error) {
+    Logger.error(`Error loading ${type} reports:`, error);
+    container.innerHTML = `
+      <div style="padding:3rem;text-align:center;">
+        <div style="color:#d32f2f;font-size:1.2rem;margin-bottom:1rem;">⚠️ Error Loading Reports</div>
+        <div style="color:#666;margin-bottom:2rem;">${getUserFriendlyErrorMessage(error)}</div>
+        <button id="retryBtn" style="
+          background:#2196f3;
+          color:#fff;
+          border:none;
+          padding:0.75rem 2rem;
+          border-radius:8px;
+          font-size:1rem;
+          cursor:pointer;
+          transition:background 0.2s;
+        ">
+          Try Again
+        </button>
+      </div>
+    `;
+
+    const retryBtn = container.querySelector('#retryBtn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => renderReports(type));
+      retryBtn.addEventListener('mouseenter', () => {
+        retryBtn.style.background = '#1976d2';
+      });
+      retryBtn.addEventListener('mouseleave', () => {
+        retryBtn.style.background = '#2196f3';
+      });
+    }
+  }
+}
+
+// --- Count Updates ---
+function updateCountsDisplay() {
+  const counts = appState.counts;
+  const activeCount = document.getElementById("activeUsersCount");
+  const reportedCount = document.getElementById("reportedUsersCount");
+  const bannedCount = document.getElementById("bannedUsersCount");
+
+  if (activeCount) {
+    activeCount.textContent = counts.active.toLocaleString();
+    activeCount.setAttribute('aria-label', `${counts.active} active users`);
+  }
+  if (reportedCount) {
+    reportedCount.textContent = counts.reported.toLocaleString();
+    reportedCount.setAttribute('aria-label', `${counts.reported} reported users`);
+  }
+  if (bannedCount) {
+    bannedCount.textContent = counts.banned.toLocaleString();
+    bannedCount.setAttribute('aria-label', `${counts.banned} banned users`);
+  }
+}
+
+// --- Initialization ---
+async function initializeDashboard(user) {
+  try {
+    Logger.info('Initializing admin dashboard for user:', user.uid);
+
+    const idToken = await user.getIdToken();
+
+    // Set up toggle container
+    const toggleContainer = document.getElementById("toggleContainer");
+    if (toggleContainer) {
+      toggleContainer.innerHTML = '';
+      toggleContainer.appendChild(createToggleContainer(idToken));
+    }
+
+    // Load initial data
+    showLoadingSpinner(document.getElementById("reportedUsersList"), "Loading dashboard...");
+
+    const [counts] = await Promise.allSettled([
+      getAdminCounts(idToken)
+    ]);
+
+    if (counts.status === 'fulfilled') {
+      updateCountsDisplay();
+    } else {
+      Logger.error('Failed to load counts:', counts.reason);
+      showNotification('Failed to load some dashboard data', 'warning');
+    }
+
+    // Load initial reports
+    await renderReports("unresolved", idToken);
+
+    // Set up banned users modal trigger
+    setupBannedUsersModal(idToken);
+
+    Logger.info('Dashboard initialized successfully');
+
+  } catch (error) {
+    Logger.error('Dashboard initialization error:', error);
+    handleError(error, 'Dashboard Initialization');
+    
+    // Show fallback UI
+    const container = document.getElementById("reportedUsersList");
+    if (container) {
+      container.innerHTML = `
+        <div style="padding:3rem;text-align:center;">
+          <div style="color:#d32f2f;font-size:1.5rem;margin-bottom:1rem;">⚠️ Dashboard Error</div>
+          <div style="color:#666;margin-bottom:2rem;">Failed to initialize the admin dashboard. Please refresh the page or contact support.</div>
+          <button onclick="location.reload()" style="
+            background:#2196f3;
+            color:#fff;
+            border:none;
+            padding:1rem 2rem;
+            border-radius:8px;
+            font-size:1.1rem;
+            cursor:pointer;
+          ">
+            Refresh Page
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+function createToggleContainer(idToken) {
   const container = document.createElement("div");
   container.className = "toggle-container";
   container.setAttribute('role', 'tablist');
@@ -410,15 +786,22 @@ function createToggleContainer() {
     btn.style.cssText = `
       background: ${active ? 'var(--globetalk-card-blue)' : '#e0e0e0'};
       color: ${active ? '#fff' : '#333'};
-      border: none;
+      border: ${active ? '3px solid #4a90e2' : '2px solid #e0e0e0'};
+      box-shadow: ${active ? '0 0 12px 2px #4a90e2' : 'none'};
       padding: 1rem 2.5rem;
       border-radius: 20px;
       font-size: 1.25rem;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
       outline: none;
+      position: relative;
     `;
+
+    // Add checkmark icon for active
+    if (active) {
+      btn.innerHTML = `<span style="margin-right:8px;">✔️</span>${text}`;
+    }
 
     // Add hover effects
     btn.addEventListener('mouseenter', () => {
@@ -438,30 +821,32 @@ function createToggleContainer() {
     });
 
     btn.addEventListener('blur', () => {
-      btn.style.boxShadow = 'none';
+      btn.style.boxShadow = btn.classList.contains('active') ? '0 0 12px 2px #4a90e2' : 'none';
     });
 
     return btn;
   });
-
-  const debouncedRenderReports = debounce(renderReports, CONFIG.DEBOUNCE_DELAY);
 
   function setActive(activeBtn) {
     buttonElements.forEach(btn => {
       const isActive = btn === activeBtn;
       btn.style.background = isActive ? 'var(--globetalk-card-blue)' : '#e0e0e0';
       btn.style.color = isActive ? '#fff' : '#333';
+      btn.style.border = isActive ? '3px solid #4a90e2' : '2px solid #e0e0e0';
+      btn.style.boxShadow = isActive ? '0 0 12px 2px #4a90e2' : 'none';
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive.toString());
+      btn.innerHTML = isActive ? `<span style="margin-right:8px;">✔️</span>${btn.textContent.replace('✔️', '').trim()}` : btn.textContent.replace('✔️', '').trim();
     });
   }
 
   buttonElements.forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const type = btn.getAttribute('data-type');
       setActive(btn);
       appState.setState('currentView', type);
-      debouncedRenderReports(type);
+      const idToken = await auth.currentUser.getIdToken();
+      await renderReports(type, idToken);
     });
 
     // Keyboard navigation
@@ -475,6 +860,61 @@ function createToggleContainer() {
 
   buttonElements.forEach(btn => container.appendChild(btn));
   return container;
+}
+
+function setupBannedUsersModal(idToken) {
+  const bannedCount = document.getElementById("bannedUsersCount");
+  const bannedCard = bannedCount?.closest('.stat-card, [data-stat="banned"]') || bannedCount?.parentElement;
+
+  if (bannedCard) {
+    bannedCard.style.cursor = "pointer";
+    bannedCard.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
+    bannedCard.title = "Click to view all banned accounts";
+    bannedCard.setAttribute('role', 'button');
+    bannedCard.setAttribute('tabindex', '0');
+    bannedCard.setAttribute('aria-label', 'View banned accounts');
+
+    const handleClick = async () => {
+      try {
+        showLoadingSpinner({ innerHTML: '' }, 'Loading banned users...');
+        const users = await retryOperation(() => getBannedUsers(idToken));
+        showBannedUsersModal(users);
+      } catch (error) {
+        handleError(error, 'Load Banned Users');
+      }
+    };
+
+    // Mouse events
+    bannedCard.addEventListener("click", handleClick);
+    
+    bannedCard.addEventListener('mouseenter', () => {
+      bannedCard.style.transform = 'translateY(-2px)';
+      bannedCard.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    });
+
+    bannedCard.addEventListener('mouseleave', () => {
+      bannedCard.style.transform = 'translateY(0)';
+      bannedCard.style.boxShadow = 'none';
+    });
+
+    // Keyboard events
+    bannedCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClick();
+      }
+    });
+
+    bannedCard.addEventListener('focus', () => {
+      bannedCard.style.outline = '2px solid #2196f3';
+      bannedCard.style.outlineOffset = '2px';
+    });
+
+    bannedCard.addEventListener('blur', () => {
+      bannedCard.style.outline = 'none';
+      bannedCard.style.outlineOffset = 'initial';
+    });
+  }
 }
 
 // --- Modals ---
@@ -595,7 +1035,8 @@ function showBannedUsersModal(bannedUsers) {
       btn.style.background = '#ccc';
 
       try {
-        await performUnbanUser(userId);
+        const idToken = await auth.currentUser.getIdToken(); // <-- Get token here!
+        await performUnbanUser(userId, idToken); // <-- Pass token here!
         
         // Remove the user from the list
         const listItem = btn.closest('li');
@@ -605,7 +1046,7 @@ function showBannedUsersModal(bannedUsers) {
         }
 
         // Update counts
-        await getAdminCounts();
+        await getAdminCounts(idToken);
         updateCountsDisplay();
       } catch (error) {
         handleError(error, 'Unban User');
@@ -640,13 +1081,33 @@ function showBannedUsersModal(bannedUsers) {
   });
 }
 
-function createUserModal({ userid, dateStr, report, reportID }, onBan) {
+function createUserModal({ userid, username, dateStr, report, reportID, flaggedMessage, reporterUid, reporterUsername }, onBan) {
   const content = `
     <div style="background:linear-gradient(135deg, #232a3b 0%, #2b3a55 100%); border:3px solid #4a90e2; box-shadow:0 16px 48px 0 rgba(74,144,226,0.25), 0 2px 8px 0 rgba(0,0,0,0.18); padding:2.5rem 2rem; border-radius:28px; min-width:340px; max-width:95vw; display:flex; flex-direction:column;">
       <h2 id="manageUserModal-title" style="margin-bottom:1.5rem;font-size:2.2rem; color:#4a90e2; text-align:center; letter-spacing:0.5px;">Manage User</h2>
-      <div style="margin-bottom:1rem;font-size:1.15rem;color:#fff;"><strong>Username:</strong> <span style="word-break:break-all;">${sanitizeInput(userid)}</span></div>
-      <div style="margin-bottom:1rem;font-size:1.1rem;color:#b0b0b0;"><strong>Date:</strong> ${sanitizeInput(dateStr)}</div>
-      <div style="margin-bottom:2rem;font-size:1.1rem;"><strong>Report:</strong> <div style="background:rgba(74,144,226,0.08);padding:1rem;border-radius:8px;margin-top:0.5rem;word-break:break-word;color:#fff;">${sanitizeInput(report)}</div></div>
+      <div style="margin-bottom:1rem;font-size:1.15rem;color:#fff;">
+        <strong>Username:</strong>
+        <span style="word-break:break-all;">
+          ${username && username !== userid ? `${sanitizeInput(username)}<br><span style="font-size:0.98rem;color:#b0b0b0;">${sanitizeInput(userid)}</span>` : sanitizeInput(userid)}
+        </span>
+      </div>
+      <div style="margin-bottom:1rem;font-size:1.1rem;color:#b0b0b0;">
+        <strong>Date:</strong> ${sanitizeInput(dateStr)}
+      </div>
+      <div style="margin-bottom:2rem;font-size:1.1rem;">
+        <strong>Report:</strong>
+        <div style="background:rgba(74,144,226,0.08);padding:1rem;border-radius:8px;margin-top:0.5rem;word-break:break-word;color:#fff;">
+          ${sanitizeInput(report)}
+        </div>
+      </div>
+      ${flaggedMessage ? `
+        <div style="margin-bottom:2rem;font-size:1.1rem;">
+          <strong>Reported Message:</strong>
+          <div style="background:rgba(244,67,54,0.08);padding:1rem;border-radius:8px;margin-top:0.5rem;word-break:break-word;color:#f44336;">
+            ${sanitizeInput(flaggedMessage)}
+          </div>
+        </div>
+      ` : ''}
       <div style="margin-bottom:2rem;">
         <label for="banReason" style="display:block;margin-bottom:0.5rem;font-weight:600;color:#4a90e2;">Ban/Dismiss Reason (required):</label>
         <textarea id="banReason" placeholder="Enter reason for banning this user..." style="width:100%;min-height:80px;padding:0.75rem;border:2px solid #4a90e2;border-radius:10px;resize:vertical;font-family:inherit;background:rgba(255,255,255,0.08);color:#fff;"></textarea>
@@ -684,7 +1145,7 @@ function createUserModal({ userid, dateStr, report, reportID }, onBan) {
   // Ban user handler
   banUserBtn.addEventListener('click', async () => {
     const reason = sanitizeInput(banReasonTextarea.value);
-    
+
     if (!reason) {
       showNotification('Please provide a reason for banning this user.', 'error');
       banReasonTextarea.focus();
@@ -697,8 +1158,12 @@ function createUserModal({ userid, dateStr, report, reportID }, onBan) {
     banUserBtn.style.background = '#ccc';
 
     try {
-      await onBan(reason);
+      const idToken = await auth.currentUser.getIdToken();
+      await performBanUser(userid, reporterUid, reportID, report, reason, dateStr, idToken);
       closeModal();
+      await renderReports('unresolved', idToken);
+      await getAdminCounts(idToken);
+      updateCountsDisplay();
     } catch (error) {
       handleError(error, 'Ban User');
       banUserBtn.disabled = false;
@@ -720,11 +1185,11 @@ function createUserModal({ userid, dateStr, report, reportID }, onBan) {
     dismissUserBtn.textContent = 'Dismissing...';
     dismissUserBtn.style.background = '#ccc';
     try {
-      // Use the global performDissmissReport function
-      await performDissmissReport(reportID, reason);
+      const idToken = await auth.currentUser.getIdToken();
+      await performDissmissReport(reportID, reason, idToken);
       showNotification('Report dismissed successfully.', 'success');
       closeModal();
-      await renderReports('unresolved');
+      await renderReports('unresolved', idToken);
     } catch (error) {
       handleError(error, 'Dismiss Report');
       dismissUserBtn.disabled = false;
@@ -774,392 +1239,8 @@ function createUserModal({ userid, dateStr, report, reportID }, onBan) {
   }, 100);
 }
 
-// --- Dismiss Report Operation ---
-async function performDissmissReport(reportId, reason) {
-  if (!validateUserId(reportId)) {
-    throw new AppError('Invalid report ID', 'VALIDATION_ERROR');
-  }
-  const sanitizedReason = sanitizeInput(reason);
-  if (!sanitizedReason) {
-    throw new AppError('Dismiss reason is required', 'VALIDATION_ERROR');
-  }
-  try {
-    const adminId = (auth.currentUser && auth.currentUser.uid) || null;
-    const result = await retryOperation(async () => {
-      //console.log('Dismissing report with ID:', reportId, 'by admin:', adminId);
-      return await dissmissReport(reportId, sanitizedReason, adminId);
-    });
-    if (!result || !result.success) {
-      throw new AppError('Dismiss operation failed', 'DISMISS_FAILED');
-    }
-    Logger.info('Report dismissed successfully:', { reportId });
-    return result;
-  } catch (error) {
-    Logger.error('Dismiss report error:', { reportId, error });
-    throw new AppError('Failed to dismiss report', 'DISMISS_FAILED', error);
-  }
-}
-
-// --- Reports Rendering ---
-async function renderReports(type) {
-  const container = document.getElementById("reportedUsersList");
-  if (!container) {
-    Logger.error('Reports container not found');
-    return;
-  }
-
-  showLoadingSpinner(container, `Loading ${type} reports...`);
-
-  try {
-    const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new AppError('Request timed out', 'TIMEOUT')), CONFIG.LOADING_TIMEOUT)
-    );
-
-    const reportPromise = type === "unresolved" 
-      ? getUnresolvedReports() 
-      : getResolvedReports();
-
-    const snapshot = await Promise.race([reportPromise, timeout]);
-
-    if (!snapshot || snapshot.empty) {
-      container.innerHTML = `
-        <div style="padding:3rem;text-align:center;color:#666;">
-          <div style="font-size:1.2rem;margin-bottom:0.5rem;">No ${type} reports found</div>
-          <div style="font-size:0.9rem;">All clear! 🎉</div>
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = "";
-    
-    const reports = [];
-    snapshot.forEach((docSnap) => {
-      reports.push({ id: docSnap.id, ...docSnap.data() });
-    });
-
-    // Sort reports by date (newest first)
-    reports.sort((a, b) => {
-      const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
-      const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
-      return timeB - timeA;
-    });
-
-    reports.forEach((data) => {
-      const reportID = data.id;
-      const reportedUid = data.reportedUid || 'Unknown User';
-      const reporterUid = data.reporterUid || "Unknown Reporter";
-      const report = data.reason || data.report || 'No reason provided';
-      const dateStr = formatDate(data.timestamp);
-
-      // New card style for both unresolved and resolved reports
-      const card = document.createElement('div');
-      card.className = 'content-item';
-      card.style.background = 'linear-gradient(135deg, #232a3b 0%, #2b3a55 100%)';
-      card.style.border = '2px solid #4a90e2';
-      card.style.borderRadius = '18px';
-      card.style.boxShadow = '0 4px 24px rgba(74,144,226,0.12)';
-      card.style.padding = '2rem 2.5rem';
-      card.style.marginBottom = '0';
-
-      const flex = document.createElement('div');
-      flex.style.display = 'flex';
-      flex.style.alignItems = 'center';
-      flex.style.gap = '2rem';
-
-      // User info
-      const info = document.createElement('div');
-      info.style.flex = '1';
-
-      const username = document.createElement('div');
-      username.style.fontSize = '1.3rem';
-      username.style.color = '#fff';
-      username.style.fontWeight = '600';
-      username.textContent = `User: ${sanitizeInput(reportedUid)}`;
-
-      const reporter = document.createElement('div');
-      reporter.style.fontSize = '1.1rem';
-      reporter.style.color = '#b0b0b0';
-      reporter.style.marginTop = '0.5rem';
-      reporter.textContent = `Reported By: ${sanitizeInput(reporterUid)}`;
-
-      const date = document.createElement('div');
-      date.style.fontSize = '1rem';
-      date.style.color = '#4a90e2';
-      date.style.marginTop = '0.5rem';
-      date.textContent = `Date: ${dateStr}`;
-
-      const reportLabel = document.createElement('div');
-      reportLabel.style.fontWeight = '500';
-      reportLabel.style.color = '#fff';
-      reportLabel.style.margin = '0.7rem 0 0.3rem 0';
-      reportLabel.textContent = 'Report:';
-
-      const reportContent = document.createElement('div');
-      reportContent.style.color = '#b0b0b0';
-      reportContent.style.lineHeight = '1.4';
-      reportContent.style.background = 'rgba(74,144,226,0.08)';
-      reportContent.style.padding = '0.75rem';
-      reportContent.style.borderRadius = '8px';
-      reportContent.style.wordBreak = 'break-word';
-      reportContent.textContent = sanitizeInput(report);
-
-      info.appendChild(username);
-      info.appendChild(reporter);
-      info.appendChild(date);
-      info.appendChild(reportLabel);
-      info.appendChild(reportContent);
-
-      // Resolved details
-      if (type === 'resolved') {
-        const outcome = document.createElement('div');
-        outcome.style.marginTop = '0.5rem';
-        outcome.style.fontSize = '1rem';
-        outcome.style.color = '#4a90e2';
-        outcome.innerHTML = `<strong>Outcome:</strong> ${sanitizeInput(data.outcome || 'N/A')}`;
-        info.appendChild(outcome);
-
-        const outcomeReason = document.createElement('div');
-        outcomeReason.style.marginTop = '0.5rem';
-        outcomeReason.style.fontSize = '1rem';
-        outcomeReason.style.color = '#b0b0b0';
-        outcomeReason.innerHTML = `<strong>Outcome Reason:</strong> ${sanitizeInput(data.outcomeReason || 'N/A')}`;
-        info.appendChild(outcomeReason);
-
-        const resolvedBy = document.createElement('div');
-        resolvedBy.style.marginTop = '0.5rem';
-        resolvedBy.style.fontSize = '1rem';
-        resolvedBy.style.color = '#b0b0b0';
-        resolvedBy.innerHTML = `<strong>Resolved By:</strong> ${sanitizeInput(data.resolvedBy || 'N/A')}`;
-        info.appendChild(resolvedBy);
-
-        const resolvedAt = document.createElement('div');
-        resolvedAt.style.marginTop = '0.5rem';
-        resolvedAt.style.fontSize = '1rem';
-        resolvedAt.style.color = '#b0b0b0';
-        resolvedAt.innerHTML = `<strong>Resolved At:</strong> ${formatDate(data.resolvedAt)}`;
-        info.appendChild(resolvedAt);
-      }
-
-      flex.appendChild(info);
-
-      // Manage button (only for unresolved)
-      if (type === 'unresolved') {
-        const manageBtn = document.createElement('button');
-        manageBtn.className = 'manage-user-btn';
-        manageBtn.style.background = 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)';
-        manageBtn.style.color = '#fff';
-        manageBtn.style.fontWeight = '600';
-        manageBtn.style.border = 'none';
-        manageBtn.style.borderRadius = '10px';
-        manageBtn.style.padding = '0.8rem 2rem';
-        manageBtn.style.fontSize = '1rem';
-        manageBtn.textContent = 'Manage';
-        manageBtn.addEventListener('click', () => {
-          createUserModal(
-            { userid: reportedUid, dateStr, report, reportID },
-            async (reason) => {
-              try {
-                await performBanUser(reportedUid, reporterUid, reportID, report, reason, dateStr);
-                await renderReports('unresolved');
-                await getAdminCounts();
-                updateCountsDisplay();
-              } catch (error) {
-                throw error; // Re-throw to be handled by modal
-              }
-            }
-          );
-        });
-        flex.appendChild(manageBtn);
-      }
-
-      card.appendChild(flex);
-      container.appendChild(card);
-    });
-
-    Logger.info(`Loaded ${reports.length} ${type} reports`);
-
-  } catch (error) {
-    Logger.error(`Error loading ${type} reports:`, error);
-    container.innerHTML = `
-      <div style="padding:3rem;text-align:center;">
-        <div style="color:#d32f2f;font-size:1.2rem;margin-bottom:1rem;">⚠️ Error Loading Reports</div>
-        <div style="color:#666;margin-bottom:2rem;">${getUserFriendlyErrorMessage(error)}</div>
-        <button id="retryBtn" style="
-          background:#2196f3;
-          color:#fff;
-          border:none;
-          padding:0.75rem 2rem;
-          border-radius:8px;
-          font-size:1rem;
-          cursor:pointer;
-          transition:background 0.2s;
-        ">
-          Try Again
-        </button>
-      </div>
-    `;
-
-    const retryBtn = container.querySelector('#retryBtn');
-    if (retryBtn) {
-      retryBtn.addEventListener('click', () => renderReports(type));
-      retryBtn.addEventListener('mouseenter', () => {
-        retryBtn.style.background = '#1976d2';
-      });
-      retryBtn.addEventListener('mouseleave', () => {
-        retryBtn.style.background = '#2196f3';
-      });
-    }
-  }
-}
-
-// --- Count Updates ---
-function updateCountsDisplay() {
-  const counts = appState.counts;
-  const activeCount = document.getElementById("activeUsersCount");
-  const reportedCount = document.getElementById("reportedUsersCount");
-  const bannedCount = document.getElementById("bannedUsersCount");
-
-  if (activeCount) {
-    activeCount.textContent = counts.active.toLocaleString();
-    activeCount.setAttribute('aria-label', `${counts.active} active users`);
-  }
-  if (reportedCount) {
-    reportedCount.textContent = counts.reported.toLocaleString();
-    reportedCount.setAttribute('aria-label', `${counts.reported} reported users`);
-  }
-  if (bannedCount) {
-    bannedCount.textContent = counts.banned.toLocaleString();
-    bannedCount.setAttribute('aria-label', `${counts.banned} banned users`);
-  }
-}
-
-// --- Initialization ---
-async function initializeDashboard(user) {
-  try {
-    Logger.info('Initializing admin dashboard for user:', user.uid);
-
-    // Set up toggle container
-    const toggleContainer = document.getElementById("toggleContainer");
-    if (toggleContainer) {
-      toggleContainer.innerHTML = '';
-      toggleContainer.appendChild(createToggleContainer());
-    }
-
-    // Load initial data
-    showLoadingSpinner(document.getElementById("reportedUsersList"), "Loading dashboard...");
-    
-    const [counts] = await Promise.allSettled([
-      getAdminCounts()
-    ]);
-
-    if (counts.status === 'fulfilled') {
-      updateCountsDisplay();
-    } else {
-      Logger.error('Failed to load counts:', counts.reason);
-      showNotification('Failed to load some dashboard data', 'warning');
-    }
-
-    // Load initial reports
-    await renderReports("unresolved");
-
-    // Set up banned users modal trigger
-    setupBannedUsersModal();
-
-    Logger.info('Dashboard initialized successfully');
-
-  } catch (error) {
-    Logger.error('Dashboard initialization error:', error);
-    handleError(error, 'Dashboard Initialization');
-    
-    // Show fallback UI
-    const container = document.getElementById("reportedUsersList");
-    if (container) {
-      container.innerHTML = `
-        <div style="padding:3rem;text-align:center;">
-          <div style="color:#d32f2f;font-size:1.5rem;margin-bottom:1rem;">⚠️ Dashboard Error</div>
-          <div style="color:#666;margin-bottom:2rem;">Failed to initialize the admin dashboard. Please refresh the page or contact support.</div>
-          <button onclick="location.reload()" style="
-            background:#2196f3;
-            color:#fff;
-            border:none;
-            padding:1rem 2rem;
-            border-radius:8px;
-            font-size:1.1rem;
-            cursor:pointer;
-          ">
-            Refresh Page
-          </button>
-        </div>
-      `;
-    }
-  }
-}
-
-function setupBannedUsersModal() {
-  const bannedCount = document.getElementById("bannedUsersCount");
-  const bannedCard = bannedCount?.closest('.stat-card, [data-stat="banned"]') || bannedCount?.parentElement;
-  
-  if (bannedCard) {
-    bannedCard.style.cursor = "pointer";
-    bannedCard.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
-    bannedCard.title = "Click to view all banned accounts";
-    bannedCard.setAttribute('role', 'button');
-    bannedCard.setAttribute('tabindex', '0');
-    bannedCard.setAttribute('aria-label', 'View banned accounts');
-
-    const handleClick = async () => {
-      try {
-        showLoadingSpinner({ innerHTML: '' }, 'Loading banned users...');
-        
-        const snapshot = await retryOperation(() => getBannedUsers());
-        const users = snapshot?.docs ? snapshot.docs.map((doc) => ({ 
-          id: doc.id, 
-          ...doc.data() 
-        })) : [];
-        
-        showBannedUsersModal(users);
-      } catch (error) {
-        handleError(error, 'Load Banned Users');
-      }
-    };
-
-    // Mouse events
-    bannedCard.addEventListener("click", handleClick);
-    
-    bannedCard.addEventListener('mouseenter', () => {
-      bannedCard.style.transform = 'translateY(-2px)';
-      bannedCard.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-    });
-
-    bannedCard.addEventListener('mouseleave', () => {
-      bannedCard.style.transform = 'translateY(0)';
-      bannedCard.style.boxShadow = 'none';
-    });
-
-    // Keyboard events
-    bannedCard.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleClick();
-      }
-    });
-
-    bannedCard.addEventListener('focus', () => {
-      bannedCard.style.outline = '2px solid #2196f3';
-      bannedCard.style.outlineOffset = '2px';
-    });
-
-    bannedCard.addEventListener('blur', () => {
-      bannedCard.style.outline = 'none';
-      bannedCard.style.outlineOffset = 'initial';
-    });
-  }
-}
-
 // --- Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
-
   Logger.info('DOM loaded, setting up admin dashboard');
 
   // Logout button logic
@@ -1186,15 +1267,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // Verify admin permissions here if needed
-      // const isAdmin = await checkAdminPermissions(user);
-      // if (!isAdmin) {
-      //   Logger.warn('User lacks admin permissions');
-      //   showNotification('Access denied: Admin permissions required', 'error');
-      //   window.location.href = "index.html";
-      //   return;
-      // }
-
       await initializeDashboard(user);
     } catch (error) {
       Logger.error('Authentication handler error:', error);
@@ -1224,9 +1296,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!document.hidden && auth.currentUser) {
       try {
         Logger.info('Tab became visible, refreshing data');
-        await getAdminCounts();
+        const idToken = await auth.currentUser.getIdToken(); // <-- Always get fresh token!
+        await getAdminCounts(idToken);
         updateCountsDisplay();
-        await renderReports(appState.currentView);
+        await renderReports(appState.currentView, idToken);
       } catch (error) {
         Logger.warn('Failed to refresh data on visibility change:', error);
       }

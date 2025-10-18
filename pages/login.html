@@ -4,25 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GlobeTalk – Login</title>
-  <link rel="stylesheet" href="/assets/login-DmWtcItk.css">
-  <style>
-    /* Optional inline tweaks */
-    .statusMessage {
-      margin-top: 15px;
-      font-size: 0.95rem;
-      color: red;
-    }
-  </style>
+  <link rel="stylesheet" href="../src/frontend/styles/login.css">
 </head>
 <body>
   <main class="login-wrapper">
-    <!-- Left section -->
     <section class="section-card login-left">
       <h1 class="logo">🌍 GlobeTalk</h1>
       <div class="illustrations">
-        <img src="/assets/user1-DSNiAP2o.png" alt="female user">
-        <img src="/assets/globe-B32PjQZ9.webp" class="globe" alt="globe">
-        <img src="/assets/user2-DSNiAP2o.png" alt="male user">
+        <img src="images/user1.png" alt="female user">
+        <img src="images/globe.webp" class="globe" alt="globe">
+        <img src="images/user2.png" alt="male user">
       </div>
       <div class="welcome">
         <h2>Hello, <span>Welcome!</span></h2>
@@ -39,58 +30,15 @@
         </label>
       </div>
     </section>
-
-    <!-- Right section -->
     <section class="section-card login-right">
       <button id="loginBtn" class="google-btn" aria-label="Continue with Google">
-        <img src="/assets/google-icon-DcV3koss.png" alt="Google logo">
+        <img src="images/google-icon.png" alt="Google logo">
         Continue with Google
       </button>
       <div id="statusMessage" class="statusMessage"></div>
     </section>
   </main>
+  <script type="module" src="/assets/login-DX9meEta.js"></script>
 
-  <!-- Firebase & login logic -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-    // TODO: Replace with your Firebase config
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    const loginBtn = document.getElementById("loginBtn");
-    const statusMessage = document.getElementById("statusMessage");
-    const privacy = document.getElementById("privacy");
-    const consent = document.getElementById("consent");
-
-    loginBtn.addEventListener("click", async () => {
-      statusMessage.textContent = "";
-
-      if (!privacy.checked || !consent.checked) {
-        statusMessage.textContent = "Please accept Privacy Policy and consent to proceed.";
-        return;
-      }
-
-      try {
-        const result = await signInWithPopup(auth, provider);
-        // Optional: Redirect after successful login
-        window.location.href = "/pages/userdashboard.html";
-      } catch (error) {
-        console.error("Login error:", error);
-        statusMessage.textContent = "Google login failed. Make sure your domain is authorized in Firebase.";
-      }
-    });
-  </script>
 </body>
 </html>

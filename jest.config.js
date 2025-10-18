@@ -7,7 +7,7 @@ export default {
     "src/**/*.{js,jsx}",
     "!src/**/*.test.js"
   ],
-  coverageDirectory: "coverage",
+  coverageDirectory: "coverage/jest",
   testMatch: ["**/*.test.js"],   // matches any test in the roots
   testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {

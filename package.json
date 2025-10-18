@@ -12,6 +12,9 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "dev": "vite",
+    "test:unit": "jest --coverage",
+    "test:e2e": "cypress run",
+    "coverage:merge": "nyc merge .nyc_output coverage/merged/coverage.json && nyc report --report-dir coverage/merged --reporter=text-summary --reporter=lcov",
     "build": "vite build"
   },
   "engines": {

@@ -3,7 +3,7 @@ import { isBannedUser, isAdmin } from "../../services/admin.js";
 
 // Constants and Configuration
 const CONFIG = {
-  API_BASE_URL: '/api',
+  API_BASE_URL: 'https://binarybandits-auth.onrender.com/api',
   PAGES: {
     LOGIN: '../../../pages/login.html',
     DASHBOARD: '../../../pages/userdashboard.html',

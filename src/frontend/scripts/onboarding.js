@@ -217,7 +217,7 @@ const timezoneToRegion = {
   "America/Lima": "South America (Western)",
   "Pacific/": "Australia & Pacific"
 };
-
+const API_PROFILE_BASE = "https://binarybandits-profileapi.onrender.com/api/profile";
 // Populate region dropdown
 function populateRegionOptions() {
   const optionsContainer = document.getElementById('regionOptions');
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const idToken = await user.getIdToken(true);
 
         // Send profile to backend API
-        const response = await fetch("/api/profile", {
+        const response = await fetch(`${API_PROFILE_BASE}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

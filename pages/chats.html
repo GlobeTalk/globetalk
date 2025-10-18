@@ -7,11 +7,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../src/frontend/styles/chat.css">
   <script type="module" src="/node_modules/emoji-picker-element/index.js"></script>
-  <script type="module" src="/node_modules/emoji-picker-element/index.js"></script>
   
 </head>
 <body>
-  <nav aria-label="Main navigation">
   <nav aria-label="Main navigation">
     <span class="nav-link" style="font-family: 'Poppins', sans-serif; font-weight: 600; color: #667eea;">GlobeTalk</span>
     <a href="userdashboard.html" class="nav-link">Home</a>
@@ -20,13 +18,7 @@
 
   <div class="container">
     <aside class="sidebar" aria-label="Chat list">
-    <aside class="sidebar" aria-label="Chat list">
       <div class="sidebar-header">My Chats</div>
-      <div class="chat-list" id="chatList" tabindex="0" aria-live="polite">
-        <div class="skeleton-loader" id="chatSkeleton" style="display:none;">
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-lines"></div>
-        </div>
       <div class="chat-list" id="chatList" tabindex="0" aria-live="polite">
         <div class="skeleton-loader" id="chatSkeleton" style="display:none;">
           <div class="skeleton-avatar"></div>
@@ -51,20 +43,7 @@
       </div>
       <div class="messages" id="messages" aria-live="polite">
         <div class="no-messages"><span class="empty-icon">💬</span> Select a conversation to view messages</div>
-      <div class="chat-header" id="chatHeader">
-        <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
-        <span id="chatHeaderText">Select a chat to start messaging</span>
       </div>
-      <div class="messages" id="messages" aria-live="polite">
-        <div class="no-messages"><span class="empty-icon">💬</span> Select a conversation to view messages</div>
-      </div>
-      <form class="chat-input" id="chatForm" autocomplete="off" aria-label="Send message">
-        <div class="input-wrapper">
-          <button type="button" id="emojiButton" class="emoji-button" aria-label="Open emoji picker">😊</button>
-          <textarea id="messageInput" placeholder="Type your message..." required rows="1" aria-label="Message input"></textarea>
-        </div>
-        <button type="submit" class="send-button" aria-label="Send message">Send</button>
-        <emoji-picker id="emojiPicker" style="display: none; position: absolute; bottom: 100%; left: 0;"></emoji-picker>
       <form class="chat-input" id="chatForm" autocomplete="off" aria-label="Send message">
         <div class="input-wrapper">
           <button type="button" id="emojiButton" class="emoji-button" aria-label="Open emoji picker">😊</button>
@@ -78,7 +57,6 @@
 
   <script type="module">
     import { observeUser, observeToken } from "../src/services/firebase.js";
-    import { observeUser, observeToken } from "../src/services/firebase.js";
 
     const API_BASE = "/api/chat";
     const chatList = document.getElementById("chatList");
@@ -87,10 +65,6 @@
     const chatForm = document.getElementById("chatForm");
     const messageInput = document.getElementById("messageInput");
     const backBtn = document.getElementById("backBtn");
-    const emojiButton = document.getElementById("emojiButton");
-    const emojiPicker = document.getElementById("emojiPicker");
-
-    const sendButton = chatForm.querySelector("button[type=submit]");
     const emojiButton = document.getElementById("emojiButton");
     const emojiPicker = document.getElementById("emojiPicker");
 
@@ -109,7 +83,7 @@
     let ID_TOKEN = null;
     let CURRENT_UID = null;
     let userCache = {};
-      // Get targetUser param from URL
+      // Get targetUser and type param from URL
       function getQueryParam(param) {
         try {
           const urlParams = new URLSearchParams(window.location.search);
@@ -120,17 +94,7 @@
         }
       }
       const TARGET_USER_ID = getQueryParam('targetUser');
-      // Get targetUser param from URL
-      function getQueryParam(param) {
-        try {
-          const urlParams = new URLSearchParams(window.location.search);
-          return urlParams.get(param);
-        } catch (error) {
-          console.error('Error parsing query parameters:', error);
-          return null;
-        }
-      }
-      const TARGET_USER_ID = getQueryParam('targetUser');
+      const CHAT_TYPE = getQueryParam('type'); // <-- Add this line
 
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
@@ -268,11 +232,9 @@
       loadingChats = true;
       
       let url = `${API_BASE}/chats?pageSize=20`;
-      let url = `${API_BASE}/chats?pageSize=20`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       try {
         const data = await retryOperation(() => apiFetch(url));
-        chats = pageToken ? chats.concat(data.chats || []) : (data.chats || []);
         chats = pageToken ? chats.concat(data.chats || []) : (data.chats || []);
         chatsNextPage = data.nextPageToken;
         await renderChatList();
@@ -312,11 +274,9 @@
       if (loadingMessages) return;
       loadingMessages = true;
       let url = `${API_BASE}/chats/${chat.chatId}/messages?pageSize=20`;
-      let url = `${API_BASE}/chats/${chat.chatId}/messages?pageSize=20`;
       if (pageToken) url += `&pageToken=${pageToken}`;
       try {
         const data = await retryOperation(() => apiFetch(url));
-        messages = pageToken ? (data.messages || []).concat(messages) : (data.messages || []);
         messages = pageToken ? (data.messages || []).concat(messages) : (data.messages || []);
         messagesNextPage = data.nextPageToken;
         await renderMessages();
@@ -333,6 +293,7 @@
         // No chat exists yet, so create it first
         const targetUserId = getQueryParam('targetUser');
         const targetUsername = getQueryParam('targetUsername');
+        const chatType = getQueryParam('type'); // <-- Add this line
         if (!targetUserId || !targetUsername) {
           alert("No chat selected and no target user.");
           return;
@@ -365,7 +326,8 @@
               participants: [
                 { uid: CURRENT_UID, username: myUsername },
                 { uid: targetUserId, username: targetUsername }
-              ]
+              ],
+              type: chatType // <-- Pass the type to the backend
             })
           }));
           // Use chatId returned from API
@@ -404,18 +366,15 @@
         await retryOperation(() => apiFetch(`${API_BASE}/chats/${selectedChat.chatId}/messages`, {
           method: "POST",
           body: JSON.stringify({ text })
-          body: JSON.stringify({ text })
         }));
         await loadMessages(selectedChat);
         messageInput.value = "";
         messageInput.style.height = 'auto';
         sendButton.disabled = true;
-        sendButton.disabled = true;
       } catch (e) {
         console.error('Error sending message:', e);
         alert("Failed to send message. Please try again.");
       } finally {
-        sendButton.textContent = "Send";
         sendButton.textContent = "Send";
       }
     }
@@ -537,7 +496,6 @@
     async function renderChatList() {
       if (!chats.length) {
         chatList.innerHTML = '<div class="no-chat"><span class="empty-icon">🗨️</span> No chats yet. Start a conversation from your dashboard!</div>';
-        chatList.innerHTML = '<div class="no-chat"><span class="empty-icon">🗨️</span> No chats yet. Start a conversation from your dashboard!</div>';
         return;
       }
       // Fetch blocked list once for all chats
@@ -577,9 +535,6 @@
         div.onkeydown = (e) => {
           if (e.key === 'Enter' || e.key === ' ') div.click();
         };
-        div.onkeydown = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') div.click();
-        };
         chatList.appendChild(div);
       }
       chatList.onscroll = () => {
@@ -614,8 +569,6 @@
         const div = document.createElement("div");
         const isOtherUser = msg.senderId !== CURRENT_UID;
         div.className = "message" + (msg.senderId === CURRENT_UID ? " me" : "");
-        // add the following line in div.InnerHTML if you want to show sender name
-        // <div class="message-sender">${escapeHtml(senderName)}</div>
         div.innerHTML = `
           <div class="message-text">${escapeHtml(msg.text)}</div>
           <div class="timestamp">${formatTime(msg.timestamp)}</div>
@@ -682,7 +635,6 @@
         }
         messagesDiv.appendChild(div);
         div.classList.add('fade-in');
-        div.classList.add('fade-in');
       }
       if (shouldScrollToBottom) {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -690,10 +642,6 @@
     }
 
     chatForm.onsubmit = async e => {
-  e.preventDefault();
-  const text = messageInput.value.trim();
-  if (!text) return;
-  await sendMessage(text);
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text) return;
@@ -714,21 +662,9 @@
       CURRENT_UID = user.uid;
       try {
         // Get initial token
-        // Get initial token
         const token = await user.getIdToken();
         ID_TOKEN = token;
         await loadChats();
-
-        // Set up token refresh listener
-        observeToken(async (user) => {
-          if (user) {
-            const newToken = await user.getIdToken();
-            if (newToken !== ID_TOKEN) {
-              console.log('Token refreshed');
-              ID_TOKEN = newToken;
-            }
-          }
-        });
 
         // Set up token refresh listener
         observeToken(async (user) => {
@@ -752,8 +688,6 @@
         window.location.href = "/pages/login.html";
       } else {
         await startChatApp(user);
-        // Ensure send button state is correct on load
-        sendButton.disabled = !messageInput.value.trim();
         // Ensure send button state is correct on load
         sendButton.disabled = !messageInput.value.trim();
       }

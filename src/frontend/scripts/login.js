@@ -307,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Get token before calling admin.js functions
       const idToken = await utils.retryOperation(async () => {
         const token = await user.getIdToken(true);
+        console.log("Obtained ID token for user:", token);
         if (!token) {
           throw new AuthError('Failed to get authentication token', 'TOKEN_FAILED');
         }

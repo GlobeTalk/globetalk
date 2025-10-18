@@ -1,8 +1,10 @@
 
 import express from "express";
 import profileRoutes from "./routes/profileRoutes.js";
+import cors from "cors";
 
 const app = express();
+app.use(cors()); // Enable CORS
 app.use(express.json()); // parse JSON bodies
 
 // Mount profile routes

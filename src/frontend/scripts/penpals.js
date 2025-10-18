@@ -1,7 +1,7 @@
 import { auth, logout } from '../../services/firebase.js';
 import { onAuthStateChanged } from "firebase/auth";
 
-const BACKEND_URL = "http://localhost:8082/api/match";
+const BACKEND_URL = "https://binarybandits-matchmakingapi.onrender.com/api/match";
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
@@ -55,7 +55,7 @@ function renderPenpals(penpals) {
             <div class="penpal-info">
 
             </div>
-            <button class="accept-btn" style="margin-top:0.5rem;" onclick="window.location.href='chats.html'">Chat</button>
+            <button class="accept-btn" style="margin-top:0.5rem;" onclick="window.location.href='chats.html?targetUsername=${encodeURIComponent(user.username || '')}&targetUser=${encodeURIComponent(user.uid || '')}'">Chat</button>
         `;
         penpalList.appendChild(card);
     });

@@ -7,6 +7,7 @@ export async function getPenPalSuggestions(userid) {
   const userDoc = await getDoc(doc(db, "users", userid));
   if (!userDoc.exists()) return [];
   const currentHobbies = userDoc.data().hobbies || [];
+  const matchedWith = userDoc.data().matchedWith || [];
   if (!Array.isArray(currentHobbies) || currentHobbies.length === 0) return [];
 
   // Get all users except current
@@ -24,6 +25,10 @@ export async function getPenPalSuggestions(userid) {
     .filter(user => {
       const hobbies = user.hobbies || [];
       if (!Array.isArray(hobbies) || hobbies.length === 0) return false;
+
+      // Skip if user already matched
+      if (matchedWith.includes(user._docId)) return false;
+      
       return hobbies.some(hobby => currentHobbies.includes(hobby));
     })
     .slice(0, 6);

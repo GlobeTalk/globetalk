@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
         const MAX_RETRY_ATTEMPTS = 3;
         const RETRY_DELAY = 1000;
         const AUTH_TIMEOUT = 10000;
+        const BACKEND_PROFILE_URL = "https://binarybandits-profileapi.onrender.com/api/profile";
 
         // Utility function to format time
         function formatTimeAgo(date) {
@@ -208,7 +209,7 @@ import { onAuthStateChanged } from "firebase/auth";
             try {
                 if (!auth?.currentUser) return;
                 const token = await auth.currentUser.getIdToken();
-                const resp = await fetch(`http://localhost:3001/api/profile/${userId}`, {
+                const resp = await fetch(`${BACKEND_PROFILE_URL}/${userId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!resp.ok) throw new Error('Failed to load profile');

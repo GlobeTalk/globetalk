@@ -176,22 +176,7 @@ import { observeUser } from "../../services/firebase.js";
 document.addEventListener("DOMContentLoaded", languageList);
 
 
-/*
-// ------------------ FIREBASE SETUP ------------------
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCtAw-A06ZJvKXfbfpNu9D8rYurdgX0sVk",
-  authDomain: "globetalk-2508c.firebaseapp.com",
-  projectId: "globetalk-2508c",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-*/
+const BACKEND_PROFILE_URL = "https://binarybandits-profileapi.onrender.com/api/profile";
 // ------------------ REGION DATA ------------------
 const regions = [
   "Africa (Central)", "Africa (Eastern)", "Africa (Southern)", "Africa (Western)",
@@ -358,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const idToken = await user.getIdToken(true);
 
         // Send profile to backend API
-        const response = await fetch("/api/profile", {
+        const response = await fetch(`${BACKEND_PROFILE_URL}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -10,7 +10,8 @@ const CONFIG = {
     API_TIMEOUT: 15000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    BACKEND_URL: 'http://localhost:8082/api/match'
+    BACKEND_URL: 'https://binarybandits-matchmakingapi.onrender.com/api/match',
+    BACKEND_PROFILE_URL: 'https://binarybandits-profileapi.onrender.com/api/profile'
 };
 
 // Utility: Delay function for retries
@@ -285,7 +286,7 @@ function setupForm() {
                 // If profile data is missing/corrupted, fetch from profile API
                 if (!profile.username || !profile.region || !profile.languages.length) {
                     try {
-                        const profileResponse = await fetch(`http://localhost:3001/api/profile/${data.match.id}`, {
+                        const profileResponse = await fetch(`${CONFIG.BACKEND_PROFILE_URL}/${data.match.id}`, {
                             method: "GET",
                             headers: {
                                 "Authorization": `Bearer ${idToken}`
@@ -364,7 +365,7 @@ async function getCurrentUserProfile(user) {
     // If not found, fetch from profile API and cache it
     try {
         const idToken = await user.getIdToken();
-        const response = await fetch("http://localhost:3001/api/profile", {
+        const response = await fetch(`${CONFIG.BACKEND_PROFILE_URL}`, {
             method: "GET",
             headers: {
                 "Authorization": `Bearer ${idToken}`

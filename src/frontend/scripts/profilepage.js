@@ -9,6 +9,8 @@ import { onAuthStateChanged } from "firebase/auth";
             </svg>
         `;
 
+        const BACKEND_PROFILE_URL = "https://binarybandits-profileapi.onrender.com/api/profile";
+
         const ERROR_MESSAGES = {
             NO_USER_ID: 'Error: No userId provided in the URL.',
             PROFILE_FETCH_FAILED: 'Unable to load profile. Please try again later.',
@@ -147,7 +149,7 @@ import { onAuthStateChanged } from "firebase/auth";
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             try {
-                const response = await fetch(`/api/profile/${encodeURIComponent(userId)}`, {
+                const response = await fetch(`${BACKEND_PROFILE_URL}/${encodeURIComponent(userId)}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${idToken}`,

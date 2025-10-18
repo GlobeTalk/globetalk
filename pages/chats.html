@@ -59,6 +59,7 @@
     import { observeUser, observeToken } from "../src/services/firebase.js";
 
     const API_BASE = "/api/chat";
+    const API_PROFILE_BASE = "https://binarybandits-profileapi.onrender.com/api/profile";
     const chatList = document.getElementById("chatList");
     const messagesDiv = document.getElementById("messages");
     const chatHeader = document.getElementById("chatHeader");
@@ -305,7 +306,7 @@
           let myUsername = null;
           try {
             // Use /api/profile for current user (no userId param)
-            const res = await fetch(`/api/profile`, { headers: { 'Authorization': `Bearer ${ID_TOKEN}` } });
+            const res = await fetch(`${API_PROFILE_BASE}`, { headers: { 'Authorization': `Bearer ${ID_TOKEN}` } });
             if (res.ok) {
               const data = await res.json();
               myUsername = data.username || null;

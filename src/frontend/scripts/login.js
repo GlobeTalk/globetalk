@@ -3,7 +3,8 @@ import { isBannedUser, isAdmin } from "../../services/admin.js";
 
 // Constants and Configuration
 const CONFIG = {
-  API_BASE_URL: '/api',
+  AUTH_API_URL: 'https://binarybandits-auth.onrender.com/',
+  MODERATION_API_URL: 'https://binarybandits-moderationapi.onrender.com/',
   PAGES: {
     LOGIN: '../../../pages/login.html',
     DASHBOARD: '../../../pages/userdashboard.html',
@@ -125,7 +126,7 @@ const utils = {
   }
 };
 
-// User existence check (unchanged)
+// User existence check 
 async function checkIfUserExists(userId) {
   try {
     const sanitizedUserId = utils.sanitizeUserId(userId);
@@ -140,7 +141,7 @@ async function checkIfUserExists(userId) {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/users/${sanitizedUserId}/exists`, {
+        const response = await fetch(`${CONFIG.AUTH_API_URL}api/users/${sanitizedUserId}/exists`, {
           method: 'GET',
           headers: {
             "Authorization": `Bearer ${token}`,

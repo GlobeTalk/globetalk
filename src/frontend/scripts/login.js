@@ -139,6 +139,7 @@ async function checkIfUserExists(userId) {
     
     return await utils.retryOperation(async () => {
       const token = utils.getSecureToken();
+      console.log("🟡 Token being sent:", token ? token.substring(0, 20) + "..." : "null");
       if (!token) {
         throw new AuthError('No valid authentication token', 'NO_TOKEN');
       }
@@ -306,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (adminUser) await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
       else if (existingUser) await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
-      //else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+      else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
 
     } catch (error) {
       console.error("❌ Login failed:", error);
@@ -333,7 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
     authStateObserverActive = true;
 
     try {
-      if (!user) {
+      const currentPath = window.location.pathname;
+      if (!user && !currentPath.endsWith("login.html")) {
         localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
         await utils.safeNavigate(CONFIG.PAGES.LOGIN);
         return;

@@ -1,33 +1,27 @@
 import express from "express";
+import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import cors from "cors";
-import userRoutes from "./src/services/auth/server/routes/users.js"; 
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = process.env.PORT || 3000;
 
-// ✅ MIDDLEWARE:
 app.use(cors());
 app.use(express.json());
 
-// ✅ SERVE BUILT FILES FROM dist/ (NOT src/):
-app.use(express.static(path.join(__dirname, "dist")));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// ✅ SERVE SCRIPTS/STYLES FROM dist/:
-app.use("/scripts", express.static(path.join(__dirname, "dist/scripts")));
-app.use("/styles", express.static(path.join(__dirname, "dist/styles")));
+const distPath = path.join(__dirname, "dist");
+app.use(express.static(distPath));
 
-// ✅ ROOT = dist/index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist/index.html"));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
-// ✅ API (unchanged):
-app.use("/api/users", userRoutes);
-
-// ✅ Health check
-app.get("/health", (req, res) => res.send("🚀 Frontend + Auth API LIVE!"));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server on port ${PORT} with dist/`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

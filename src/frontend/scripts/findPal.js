@@ -10,7 +10,7 @@ const CONFIG = {
     API_TIMEOUT: 15000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    BACKEND_URL: 'https://binarybandits-matchapi.onrender.com/api/match',
+    BACKEND_URL: 'https://binarybandits-matchmakingapi.onrender.com/api/match',
     BACKEND_PROFILE_URL: 'https://binarybandits-profileapi.onrender.com/api/profile'
 };
 

@@ -1,0 +1,29 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/userdashboard-BXei4F2g.js","assets/firebase-BrtCog--.js"])))=>i.map(i=>d[i]);
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{_ as y}from"./preload-helper-BXl3LOEh.js";import{b as w,a as h,l as b}from"./firebase-BrtCog--.js";const T=3,v=1e3,E=1e4;function M(o){try{if(!o)return"Unknown";const t=o instanceof Date?o:new Date(o);if(isNaN(t.getTime()))return"Unknown";const s=new Date-t;if(s<0)return"Just now";const e=Math.floor(s/1e3);if(e<60)return`${e}s ago`;const n=Math.floor(e/60);if(n<60)return`${n}m ago`;const c=Math.floor(n/60);if(c<24)return`${c}h ago`;const l=Math.floor(c/24);if(l<7)return`${l} day${l!==1?"s":""} ago`;const a=Math.floor(l/7);return a<4?`${a} week${a!==1?"s":""} ago`:t.toLocaleDateString()}catch(t){return console.error("Error formatting time:",t),"Unknown"}}async function m(o,t=T){for(let r=0;r<t;r++)try{return await o()}catch(s){if(r===t-1)throw s;await new Promise(e=>setTimeout(e,v*(r+1)))}}function d(o){if(!o)return"";const t=document.createElement("div");return t.textContent=o,t.innerHTML}async function L(o){const t=document.getElementById("penPalCards");if(t)try{t.innerHTML="<span>Loading pen pal suggestions...</span>";const{getPenPalSuggestions:r}=await y(async()=>{const{getPenPalSuggestions:e}=await import("./userdashboard-BXei4F2g.js");return{getPenPalSuggestions:e}},__vite__mapDeps([0,1])),s=await m(()=>r(o));if(t.innerHTML="",!s||s.length===0){t.innerHTML='<span style="color: #666;">No pen pal suggestions available at the moment. Check back later!</span>';return}s.forEach(e=>{try{const n=document.createElement("div");n.className="pen-pal-card",n.setAttribute("role","button"),n.setAttribute("tabindex","0");const c=d(e?.username||"Unknown User"),l=d(e?.region||"N/A"),a=Array.isArray(e?.hobbies)&&e.hobbies.length?e.hobbies.map(i=>d(i)).join(", "):"N/A",f=Array.isArray(e?.languages)&&e.languages.length?e.languages.map(i=>d(i)).join(", "):"N/A";n.innerHTML=`
+                            <h4>${c}</h4>
+                            <div class="pen-pal-info">
+                                <p><strong>Region:</strong> ${l}</p>
+                                <p><strong>Hobbies:</strong> ${a}</p>
+                                <p><strong>Languages:</strong> ${f}</p>
+                            </div>
+                        `;const g=()=>{e?._docId?window.location.href=`../pages/profile.html?userId=${encodeURIComponent(e._docId)}`:(console.error("User ID not available"),alert("Unable to view this profile. Please try again."))};n.onclick=g,n.onkeypress=i=>{(i.key==="Enter"||i.key===" ")&&(i.preventDefault(),g())},t.appendChild(n)}catch(n){console.error("Error rendering pen pal card:",n)}})}catch(r){console.error("Error loading pen pal suggestions:",r),t.innerHTML=`
+                    <span style="color: #d32f2f;">
+                        Unable to load pen pal suggestions. 
+                        <button onclick="location.reload()" style="margin-left: 10px;">
+                            Retry
+                        </button>
+                    </span>
+                `}}async function k(o){const t=document.getElementById("conversationsContainer");if(t)try{t.innerHTML="<span>Loading conversations...</span>";const s=(await m(async()=>{const e=await h.currentUser.getIdToken(),n=await fetch("/api/chat/latest",{headers:{Authorization:`Bearer ${e}`}});if(!n.ok)throw new Error("Failed to fetch conversations");return n.json()})).chats||[];if(t.innerHTML="",s.length===0){t.innerHTML='<span style="color: #666;">No active conversations yet. Find a pen pal to start chatting!</span>';return}s.forEach(e=>{try{const n=document.createElement("div");n.className="conversation-item",n.setAttribute("role","button"),n.setAttribute("tabindex","0");const c=(e.participants||[]).find(u=>u!==o),l=c?d(c):"Unknown";let a=e.lastUpdated;a&&typeof a=="object"&&typeof a.toDate=="function"&&(a=a.toDate());const f=M(a);let g="No messages yet";e.lastMessage&&e.lastMessage.text&&(g=d(e.lastMessage.text.substring(0,50))+(e.lastMessage.text.length>50?"...":"")),n.innerHTML=`
+                            <div>
+                                <h4>${l}</h4>
+                                <small style="color: #666;">${g}</small>
+                            </div>
+                            <span class="conversation-time">${f}</span>
+                        `;const i=()=>{e.chatId&&(window.location.href=`../pages/chats.html?id=${encodeURIComponent(e.chatId)}`)};n.onclick=i,n.onkeypress=u=>{(u.key==="Enter"||u.key===" ")&&(u.preventDefault(),i())},t.appendChild(n)}catch(n){console.error("Error rendering conversation item:",n)}})}catch(r){console.error("Error loading conversations:",r),t.innerHTML=`
+                    <span style="color: #d32f2f;">
+                        Unable to load conversations. 
+                        <button onclick="location.reload()" style="margin-left: 10px;">
+                            Retry
+                        </button>
+                    </span>
+                `}}async function p(){try{A();const o=setTimeout(()=>{console.error("Authentication timeout"),window.location.href="../pages/login.html"},E);w(h,async t=>{if(clearTimeout(o),!t){console.log("No authenticated user, redirecting to login"),window.location.href="../pages/login.html";return}const r=t.uid;await Promise.allSettled([L(r),k(r)])})}catch(o){console.error("Dashboard initialization error:",o),alert("Failed to initialize dashboard. Please refresh the page.")}}async function A(){const o=document.getElementById("logoutBtn");o&&o.addEventListener("click",async t=>{t.preventDefault();try{o.disabled=!0,o.textContent="Logging out...",await b(),window.location.href="../pages/login.html"}catch(r){console.error("Logout error:",r),alert("Failed to log out. Please try again."),o.disabled=!1,o.textContent="Logout"}})}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",p):p();

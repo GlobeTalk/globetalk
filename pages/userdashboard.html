@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobeTalk - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/userdashboard-MMRZUayq.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-BXl3LOEh.js">
+  <link rel="modulepreload" crossorigin href="/assets/firebase-BrtCog--.js">
+  <link rel="stylesheet" crossorigin href="/assets/userdashboard-C9pB6aAL.css">
+</head>
+<body>
+    <div class="min-h-screen">
+        <!-- Navigation -->
+        <nav>
+            <a href="userdashboard.html" class="nav-link">Home</a>
+            <a href="findPal.html" class="nav-link">Find Pen Pal</a>
+            <a href="chats.html" class="nav-link">Chats</a> <!-- Added link to chats.html -->
+            <a href="settings.html" class="nav-link">Settings & Safety</a>
+            <button id="logoutBtn" class="nav-link">Logout</button>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- GlobeTalk branding -->
+            <h1 class="globetalk-title">GlobeTalk</h1>
+
+            <!-- Dashboard Title -->
+            <div class="dashboard-title-container">
+                <h2 class="dashboard-title">Dashboard</h2>
+            </div>
+
+            <!-- Pen Pal Suggestions Section -->
+            <div class="section">
+                <h3 class="section-title">Pen Pal Suggestions</h3>
+                <div class="cards-container" id="penPalCards">
+                    <span>Loading...</span>
+                </div>
+            </div>
+
+            <!-- Active Conversations Section -->
+            <div class="section">
+                <h3 class="section-title">Active Conversations</h3>
+                <div class="conversations-container" id="conversationsContainer">
+                    <span>Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

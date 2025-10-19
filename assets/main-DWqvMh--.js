@@ -1,0 +1,1 @@
+import"./modulepreload-polyfill-B5Qt9EMX.js";function n(t=window){t.location.href="../../../pages/login.html"}function o(){const t=document.getElementById("getStartedBtn");t&&(t.addEventListener("click",()=>{n()}),t.addEventListener("keydown",e=>{(e.key==="Enter"||e.key===" ")&&(e.preventDefault(),t.click())}))}document.addEventListener("DOMContentLoaded",o);

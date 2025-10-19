@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>GlobeTalk Landing</title>
+  <style>
+    /* Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to right, #1976d2, #32dde3, #1976d2);
+      color: #0d1b2a;
+    }
+
+    /* Navbar */
+header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 1rem 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header .logo {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1976d2;
+  letter-spacing: -0.5px;
+}
+
+/* ✅ Navigation items to the right */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+nav .logo {
+  flex: 1;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-left: auto; /* Pushes nav items to the right */
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+nav ul li a:hover {
+  background: #f7fafc;
+  color: #667eea;
+  transform: translateY(-2px);
+}
+
+   
+    /*Shared Sections Styles*/
+    .section-card {
+      border-radius: 20px;
+      margin: 40px auto;
+      max-width: 1200px;
+      padding:60px 20px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+    }
+
+    .hero-section h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #14213d;
+    }
+
+    .hero-section p {
+      font-size: 1rem;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    button {
+      background-color: #0077b6;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #023e8a;
+    }
+
+    /* Images Section */
+    .images {
+      position: relative;
+      margin-top: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .cloud {
+      width: 100px;
+      position: absolute;
+      top: 20px;
+    }
+
+    .cloud-left {
+      left: 10%;
+    }
+
+    .cloud-right {
+      right: 10%;
+    }
+
+    .girl {
+      width: 180px;
+    }
+
+    .globe {
+      width: 120px;
+    }
+
+    .boy {
+      width: 160px;
+    }
+
+    /* About Section */
+  /*  .about-section {
+    padding: 80px 20px;
+    background-color: #add8e6; 
+    border-radius: 20px;
+    margin: 40px auto;
+  }*/
+
+  .about-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .about-text {
+    flex: 1 1 400px;
+    max-width: 600px;
+  }
+
+  .about-text h2 {
+    font-size: 2rem;
+    color: #14213d;
+    margin-bottom: 20px;
+  }
+
+  .about-text p {
+    font-size: 1.1rem;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 15px;
+  }
+
+  .about-image {
+    flex: 1 1 300px;
+    text-align: center;
+  }
+
+  .about-image img {
+    max-width: 80%;
+    height: auto;
+    border-radius: 12px;
+  }
+
+  /*Features Section*/
+  /*.features {
+    padding: 80px 20px;
+    background-color: #ffffff;
+  }*/
+  .features-container{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    justify-content: center;
+  }
+
+  .feature-card {
+    background-color: #f0f4f8;
+    border-radius: 20px;
+    padding: 30px 20px;
+    width: 250px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .feature-card h3{
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: #14213d;
+  }
+  .feature-card p{
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.4;
+  }
+
+  /* Footer */
+  .footer {
+  background-color: rgba(123, 167, 202, 0.8);
+  color: #ffffff;
+  padding: 40px 20px 20px;
+  border-radius: 12px 12px 0 0;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  gap: 40px;
+}
+
+.footer-column {
+  position: relative;
+  margin: 10px;
+  min-width: 200px;
+}
+
+.footer-column h3 {
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  color: #add8e6;
+}
+
+.footer-column ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-column ul li {
+  margin-bottom: 10px;
+}
+
+.footer-column a {
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.footer-column a:hover {
+  color: #add8e6;
+}
+
+.footer-bottom {
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 15px;
+  font-size: 0.9rem;
+}
+
+
+  </style>
+
+  <script type="module" crossorigin src="/assets/main-DWqvMh--.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+</head>
+<body>
+ <header>
+  <nav>
+    <div class="logo">GlobeTalk</div>
+    <ul>
+      <li><a href="#home">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How it Works</a></li>
+      <li><a href="#contacts">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+  <section class="hero section-card" id="home">
+  <h1>Connect with Pen Pals <br> Around the World</h1>
+  <p>GlobeTalk is a virtual Pen Pals platform to make friends worldwide through letter exchange.</p>
+
+  <div class="images">
+    <img src="data:image/png;base64,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" alt="cloud" class="cloud-left">
+    <img src="/assets/user1-Dgk05Uw3.png" alt="girl" class="girl">
+    <img src="/assets/globe-B32PjQZ9.webp" alt="globe" class="globe">
+    <img src="/assets/user2-DSNiAP2o.png" alt="boy" class="boy">
+    <img src="data:image/png;base64,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" alt="cloud" class="cloud-right">
+  </div>
+  <button id="getStartedBtn">Get started</button>
+
+</section>
+
+<section class="about section-card" id="about">
+  <div class="about-container">
+    <div class="about-text">
+      <h2>About GlobeTalk</h2>
+      <p>GlobeTalk is a platform that connects people from different countries through pen pal letters, helping users learn about other cultures, make lifelong friends, and share experiences globally.</p>
+      <p>Our mission is to foster meaningful connections and cultural exchange in a safe, friendly, and easy-to-use environment.</p>
+    </div>
+    <div class="about-image">
+      <img src="/assets/about-illustration-C9FZlUPX.png" alt="Connecting the world">
+    </div>
+  </div>
+</section>
+
+<section class="features-section section-card" id="features">
+  <div class="features-container">
+    <div class="feature-card">
+      <h3>Make Friends</h3>
+      <p>Connect with people worldwide.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Learn Cultures</h3>
+      <p>Discover traditions from other countries.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Safe Exchange</h3>
+      <p>Secure and moderated pen pal letters.</p>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works section-card" id="how-it-works">
+  <h2>How It Works</h2>
+  <div class="steps-container">
+    <div class="step">
+      <h3>1. Sign Up</h3>
+      <p>Create your free account in just a few clicks.</p>
+    </div>
+    <div class="step">
+      <h3>2. Find a Pen Pal</h3>
+      <p>Browse profiles and get matched with people from around the world.</p>
+    </div>
+    <div class="step">
+      <h3>3. Start Exchanging Letters</h3>
+      <p>Write and receive virtual letters safely on GlobeTalk.</p>
+    </div>
+  </div>
+</section>
+
+
+<footer class="footer" id="contacts">
+  <div class="footer-content">
+    <div class="footer-column">
+      <h3>Contacts</h3>
+      <ul>
+        <li><a href="mailto:info@globetalk.com"><i class="fas fa-envelope"></i> info@globetalk.com</a></li>
+        <li><i class="fas fa-phone"></i> +27 60 456 9013</li>
+      </ul>
+    </div>
+
+    <div class="footer-column">
+      <h3>Address</h3>
+      <ul>
+        <li><i class="fas fa-map-marker-alt"></i> 123 Braamfontein</li>
+        <li>Johannesburg</li>
+        <li>South Africa</li>
+      </ul>
+    </div>
+
+    <div class="footer-column">
+      <h3>Socials</h3>
+      <ul>
+        <li><a href="#"><i class="fab fa-facebook-f"></i> Facebook</a></li>
+        <li><a href="#"><i class="fab fa-twitter"></i> Twitter</a></li>
+        <li><a href="#"><i class="fab fa-instagram"></i> Instagram</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2025 GlobeTalk. All rights reserved.</p>
+  </div>
+</footer>
+
+
+</body>
+</html>

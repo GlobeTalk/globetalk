@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GlobeTalk - My Chats</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/chats-B4BAQC4Y.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-BXl3LOEh.js">
+  <link rel="modulepreload" crossorigin href="/assets/firebase-BrtCog--.js">
+  <link rel="stylesheet" crossorigin href="/assets/chats-D4pm9Aip.css">
+</head>
+<body>
+  <nav aria-label="Main navigation">
+    <span class="nav-link" style="font-family: 'Poppins', sans-serif; font-weight: 600; color: #667eea;">GlobeTalk</span>
+    <a href="userdashboard.html" class="nav-link">Home</a>
+    <a href="findPal.html" class="nav-link">Find Pen Pal</a>
+  </nav>
+
+  <div class="container">
+    <aside class="sidebar" aria-label="Chat list">
+      <div class="sidebar-header">My Chats</div>
+      <div class="chat-list" id="chatList" tabindex="0" aria-live="polite">
+        <div class="skeleton-loader" id="chatSkeleton" style="display:none;">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-lines"></div>
+        </div>
+        <div class="loading">Loading chats...</div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="chat-header" id="chatHeader">
+        <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
+        <span id="chatHeaderText">Select a chat to start messaging</span>
+        <div class="chat-menu-container" style="display:inline-block; position:relative; float:right;">
+          <button id="chatMenuBtn" class="chat-menu-btn" aria-label="More options" style="background:none; border:none; cursor:pointer; font-size:22px; padding:4px 8px;">
+            &#8942;
+          </button>
+          <div id="chatMenuDropdown" class="chat-menu-dropdown" style="display:none; position:absolute; right:0; top:32px; background:#fff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.08); min-width:120px; z-index:10;">
+            <button id="blockUserBtn" class="chat-menu-item" style="width:100%; background:none; border:none; padding:10px 16px; text-align:left; cursor:pointer; color:#ef4444;">Block</button>
+            <button id="flagUserBtn" class="chat-menu-item" style="width:100%; background:none; border:none; padding:10px 16px; text-align:left; cursor:pointer; color:#f59e42;">Flag</button>
+          </div>
+        </div>
+      </div>
+      <div class="messages" id="messages" aria-live="polite">
+        <div class="no-messages"><span class="empty-icon">💬</span> Select a conversation to view messages</div>
+      </div>
+      <form class="chat-input" id="chatForm" autocomplete="off" aria-label="Send message">
+        <div class="input-wrapper">
+          <button type="button" id="emojiButton" class="emoji-button" aria-label="Open emoji picker">😊</button>
+          <textarea id="messageInput" placeholder="Type your message..." required rows="1" aria-label="Message input"></textarea>
+        </div>
+        <button type="submit" class="send-button" aria-label="Send message">Send</button>
+        <emoji-picker id="emojiPicker" style="display: none; position: absolute; bottom: 100%; left: 0;"></emoji-picker>
+      </form>
+    </main>
+  </div>
+
+</body>
+</html>

@@ -1,3 +1,4 @@
+import { type } from "@testing-library/user-event/dist/cjs/utility/type.js";
 import { admin } from "../firebaseAdmin.js";
 import { encryptMessage, decryptMessage } from "./messageEncryptionController.js";
 
@@ -68,6 +69,26 @@ export async function sendMessage(req, res) {
   try {
     const chatDoc = await db.collection("chats").doc(chatId).get();
     if (!chatDoc.exists) return res.status(404).json({ success: false, error: "Chat not found" });
+
+    // Prevent multiple messages for "onetime" chat
+    const chatData = chatDoc.data();
+
+    if (chatData.type === "onetime") {
+        const messagesSnapshot = await db
+          .collection("chats")
+          .doc(chatId)
+          .collection("messages")
+          .limit(1)
+          .get();
+
+          if (!messagesSnapshot.empty) {
+              return res.status(403).json({
+                success: false,
+                error: "Can't send multiple messages to a one-time chat.",
+              });
+            }
+    }
+
     const encryptedText = encryptMessage(text);
     const message = {
       senderId,
@@ -79,7 +100,7 @@ export async function sendMessage(req, res) {
       lastMessage: { senderId, text: encryptedText, timestamp: new Date(), status: 'unread' },
       lastUpdated: new Date(),
     });
-    res.json({ success: true, message: { ...message, text }, chatId });
+    res.json({ success: true, message: { ...message, text }, chatId, type: chatData.type });
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ success: false, error: "Failed to send message" });

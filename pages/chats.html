@@ -60,6 +60,7 @@
 
     const API_BASE = "/api/chat";
     const API_PROFILE_BASE = "https://binarybandits-profileapi.onrender.com/api/profile";
+    const API_MODERATION_BASE = "https://binarybandits-moderationapi.onrender.com/api/moderation";
     const chatList = document.getElementById("chatList");
     const messagesDiv = document.getElementById("messages");
     const chatHeader = document.getElementById("chatHeader");
@@ -364,10 +365,37 @@
       try {
         sendButton.disabled = true;
         sendButton.textContent = "Sending...";
-        await retryOperation(() => apiFetch(`${API_BASE}/chats/${selectedChat.chatId}/messages`, {
-          method: "POST",
-          body: JSON.stringify({ text })
-        }));
+        let response;
+        try {
+          response = await retryOperation(() => apiFetch(`${API_BASE}/chats/${selectedChat.chatId}/messages`, {
+            method: "POST",
+            body: JSON.stringify({ text })
+          }));
+        } catch (err) {
+          // Try to parse backend error for one-time chat
+          let errorMsg = "";
+          try {
+            // Try to parse JSON error if possible
+            errorMsg = JSON.parse(err.message).error || err.message;
+          } catch {
+            errorMsg = err.message;
+          }
+          if (errorMsg && errorMsg.toLowerCase().includes("one-time chat")) {
+            showConfirmModal({
+              title: "One-Time Chat",
+              message: "You can't send multiple messages to a one-time chat. This chat will be deleted after review.",
+              onConfirm: async () => {
+                await finishOnetimeChat(selectedChat);
+              },
+              onCancel: () => {}
+            });
+            sendButton.textContent = "Send";
+            return;
+          } else {
+            throw err; // rethrow if not a one-time chat error
+          }
+        }
+
         await loadMessages(selectedChat);
         messageInput.value = "";
         messageInput.style.height = 'auto';
@@ -380,170 +408,246 @@
       }
     }
 
-    async function selectChat(chat) {
-      selectedChat = chat;
-      const localChat = chats.find(c => c.chatId === selectedChat.chatId);
+    // To confirm finishing reading "onetime" chats
+function showConfirmModal({ title, message, onConfirm, onCancel }) {
+  let modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-content" style="background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,0.15);max-width:340px;margin:60px auto;">
+      <h3 style="margin-top:0;">${escapeHtml(title)}</h3>
+      <div style="margin-bottom:18px;">${escapeHtml(message)}</div>
+      <button id="modalConfirmBtn" style="background:#6366f1;color:#fff;padding:8px 18px;border:none;border-radius:5px;margin-right:10px;">Yes, finish</button>
+      <button id="modalCancelBtn" style="background:#e5e7eb;color:#374151;padding:8px 18px;border:none;border-radius:5px;">No</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('modalConfirmBtn').onclick = () => {
+    document.body.removeChild(modal);
+    onConfirm && onConfirm();
+  };
+  document.getElementById('modalCancelBtn').onclick = () => {
+    document.body.removeChild(modal);
+    onCancel && onCancel();
+  };
+}
+
+// ---  shows the chat list ---
+async function renderChatList() {
+  if (!chats.length) {
+    chatList.innerHTML = '<div class="no-chat"><span class="empty-icon">🗨️</span> No chats yet. Start a conversation from your dashboard!</div>';
+    return;
+  }
+  let blockedList = [];
+  try {
+    const res = await apiFetch(`${API_MODERATION_BASE}/listBlocked/${CURRENT_UID}`);
+    blockedList = Array.isArray(res.blocked) ? res.blocked : [];
+  } catch (e) {
+    blockedList = [];
+  }
+  chatList.innerHTML = "";
+  for (const chat of chats) {
+    // --- Skip "onetime" chats with status "read" ---
+    if (chat.type === "onetime" && chat.lastMessage?.status === "read") continue;
+    // --- Skip "onetime" chats if you are the sender ---
+    if (
+      chat.type === "onetime" &&
+      chat.lastMessage?.senderId === CURRENT_UID
+    ) continue;
+
+    const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
+    const otherUid = otherParticipant ? otherParticipant.uid : null;
+    const otherUser = otherParticipant ? otherParticipant.username : "Unknown";
+    const isBlocked = otherUid && blockedList.includes(otherUid);
+    const isUnread = chat.lastMessage?.status === "unread" && chat.lastMessage?.senderId !== CURRENT_UID;
+    const type = chat.type || 'penpal';
+
+    let emoji = "";
+    if (type === "onetime" && isUnread) emoji = "⏳"; // Timer emoji to indicate unread onetime chat
+
+    const div = document.createElement("div");
+    div.className = "chat-item" + (selectedChat?.chatId === chat.chatId ? " active" : "");
+    div.setAttribute('tabindex', '0');
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-label', `Chat with ${otherUser}`);
+    div.innerHTML = `
+      <div class="chat-user" style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+        <span class="username" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+          ${emoji} ${escapeHtml(otherUser)}${isBlocked ? ' (Blocked)' : ''}
+        </span>
+        ${isUnread ? `<span class="unread-dot" style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:#c084fc;"></span>` : ""}
+      </div>
+    `;
+    div.onclick = () => {
+      // If switching away from a selected "onetime" chat, show modal
+      if (
+        selectedChat &&
+        selectedChat.type === "onetime" &&
+        selectedChat.chatId !== chat.chatId
+      ) {
+        showConfirmModal({
+          title: "Finish Reading?",
+          message: "One time chats are deleted after review. Are you sure you want to finish reading?",
+          onConfirm: async () => {
+            await finishOnetimeChat(selectedChat);
+            selectChat(chat);
+          },
+          onCancel: () => {}
+        });
+      } else {
+        if (!selectedChat || selectedChat.chatId !== chat.chatId) {
+          selectChat(chat);
+        }
+      }
+    };
+    div.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') div.click();
+    };
+    chatList.appendChild(div);
+  }
+  chatList.onscroll = () => {
+    if (chatList.scrollTop + chatList.clientHeight >= chatList.scrollHeight - 10 && chatsNextPage && !loadingChats) {
+      loadChats(chatsNextPage);
+    }
+  };
+}
+
+// --- Add finishOnetimeChat function ---
+async function finishOnetimeChat(chat) {
+  try {
+    // Mark as read or delete (depending on backend API)
+   
+    selectedChat = null;
+    await loadChats();
+    messages = [];
+    messagesDiv.innerHTML = '<div class="no-messages"><span class="empty-icon">💬</span> Select a conversation to view messages</div>';
+    chatHeader.innerHTML = `<span id="chatHeaderText">Select a chat to start messaging</span>`;
+    // Restore typing box
+    chatForm.style.display = "";
+    sendButton.textContent = "Send";
+    sendButton.disabled = true;
+    messageInput.value = "";
+    messageInput.style.height = 'auto';
+  } catch (e) {
+    alert("Failed to finish reading: " + (e.message || e));
+  }
+}
+
+// --- Modify selectChat ---
+async function selectChat(chat) {
+  selectedChat = chat;
+  const localChat = chats.find(c => c.chatId === selectedChat.chatId);
   if (localChat?.lastMessage) {
     localChat.lastMessage.status = "read";
   }
-      messages = [];
-      messagesNextPage = null;
+  messages = [];
+  messagesNextPage = null;
 
-      const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
-      const otherUid = otherParticipant ? otherParticipant.uid : null;
-      const displayName = otherParticipant ? otherParticipant.username : "Unknown";
-      let isBlocked = false;
-      let isBanned = false;
+  const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
+  const otherUid = otherParticipant ? otherParticipant.uid : null;
+  const displayName = otherParticipant ? otherParticipant.username : "Unknown";
+  let isBlocked = false;
+  let isBanned = false;
 
-      // Check if user is blocked
-      try {
-        const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
-        isBlocked = Array.isArray(res.blocked) && otherUid && res.blocked.includes(otherUid);
-      } catch (e) {
-        isBlocked = false;
-      }
+  // Check if user is blocked
+  try {
+    const res = await apiFetch(`${API_MODERATION_BASE}/listBlocked/${CURRENT_UID}`);
+    isBlocked = Array.isArray(res.blocked) && otherUid && res.blocked.includes(otherUid);
+  } catch (e) {
+    isBlocked = false;
+  }
 
-      // --- Check if user is banned ---
-      if (otherUid) {
-        try {
-          const bannedRes = await apiFetch(`/api/moderation/isBanned/${otherUid}`);
-          isBanned = bannedRes && bannedRes.banned;
-        } catch (e) {
-          isBanned = false;
-        }
-      }
+  // --- Check if user is banned ---
+  if (otherUid) {
+    try {
+      const bannedRes = await apiFetch(`${API_MODERATION_BASE}/isBanned/${otherUid}`);
+      isBanned = bannedRes && bannedRes.banned;
+    } catch (e) {
+      isBanned = false;
+    }
+  }
 
-      // Render header
-      chatHeader.innerHTML = `
-        <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
-        <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
-            <circle cx="16" cy="16" r="16" fill="#e0e7ff"/>
-            <ellipse cx="16" cy="13" rx="7" ry="7" fill="#6366f1"/>
-            <ellipse cx="16" cy="25" rx="10" ry="6" fill="#a5b4fc"/>
-          </svg>
-        </span>
-        <span style="vertical-align:middle; color:${isBlocked ? '#ef4444' : isBanned ? '#b91c1c' : 'inherit'}; font-weight:${isBlocked || isBanned ? '600' : 'inherit'};">
-          ${escapeHtml(displayName)}
-          ${isBlocked ? ' <span style="color:#ef4444;font-weight:600">(Blocked)</span>' : ''}
-          ${isBanned ? ' <span style="color:#b91c1c;font-weight:600">(Banned)</span>' : ''}
-        </span>
-        <button id="blockUserBtn" style="margin-left:16px;padding:7px 18px;background:${isBlocked ? '#f3f4f6' : '#ef4444'};color:${isBlocked ? '#ef4444' : '#fff'};border:none;border-radius:5px;cursor:pointer;float:right;min-width:90px;">${isBlocked ? 'Unblock' : 'Block'}</button>
-      `;
+  // Render header
+  chatHeader.innerHTML = `
+    <button id="backBtn" class="back-btn" aria-label="Back to chat list" style="display:none;">←</button>
+    <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
+        <circle cx="16" cy="16" r="16" fill="#e0e7ff"/>
+        <ellipse cx="16" cy="13" rx="7" ry="7" fill="#6366f1"/>
+        <ellipse cx="16" cy="25" rx="10" ry="6" fill="#a5b4fc"/>
+      </svg>
+    </span>
+    <span style="vertical-align:middle; color:${isBlocked ? '#ef4444' : isBanned ? '#b91c1c' : 'inherit'}; font-weight:${isBlocked || isBanned ? '600' : 'inherit'};">
+      ${escapeHtml(displayName)}
+      ${isBlocked ? ' <span style="color:#ef4444;font-weight:600">(Blocked)</span>' : ''}
+      ${isBanned ? ' <span style="color:#b91c1c;font-weight:600">(Banned)</span>' : ''}
+    </span>
+    <button id="blockUserBtn" style="margin-left:16px;padding:7px 18px;background:${isBlocked ? '#f3f4f6' : '#ef4444'};color:${isBlocked ? '#ef4444' : '#fff'};border:none;border-radius:5px;cursor:pointer;float:right;min-width:90px;">${isBlocked ? 'Unblock' : 'Block'}</button>
+  `;
 
-      // Attach block/unblock logic to the single button
-      const blockBtn = document.getElementById('blockUserBtn');
-      if (blockBtn) blockBtn.onclick = async () => {
-        if (!otherUid) return;
-        try {
-          if (isBlocked) {
-            await apiFetch(`/api/moderation/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
-          } else {
-            await apiFetch(`/api/moderation/block`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
-          }
-          await selectChat(chat); // re-render
-        } catch (err) {
-          alert('Failed to update block status: ' + err);
-        }
-      };
-
-      // --- Disable send button if banned ---
-      if (isBanned) {
-        sendButton.disabled = true;
-        chatForm.disabled = true;
-  // Prevent any form submission
-        chatForm.onsubmit = (e) => e.preventDefault();
-        sendButton.onclick = (e) => e.preventDefault();
-        sendButton.textContent = "User is banned";
-        sendButton.style.background = "#b91c1c";
-        sendButton.style.color = "#fff";
-        messagesDiv.innerHTML = '<div class="no-messages" style="color:#b91c1c;font-weight:600"><span class="empty-icon">🚫</span> This user has been banned. You cannot send messages.</div>';
-        return;
-      }
-
-      // Update send button if blocked
-      sendButton.textContent = isBlocked ? 'Unblock' : 'Send';
-      // Ensure the form and button are re-enabled for non-banned chats
-      sendButton.disabled = false;
-      chatForm.disabled = false;
-      // Restore the form submit handler (same behavior as the global handler)
-      chatForm.onsubmit = async e => {
-        e.preventDefault();
-        const text = messageInput.value.trim();
-        if (!text) return;
-        await sendMessage(text);
-      };
-      // Reset any button inline styles applied for the banned state
-      sendButton.style.background = '';
-      sendButton.style.color = '';
-      sendButton.onclick = null;
-
+  // Attach block/unblock logic to the single button
+  const blockBtn = document.getElementById('blockUserBtn');
+  if (blockBtn) blockBtn.onclick = async () => {
+    if (!otherUid) return;
+    try {
       if (isBlocked) {
-        sendButton.onclick = async (e) => {
-          e.preventDefault();
-          if (!otherUid) return;
-          try {
-            await apiFetch(`/api/moderation/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
-            await selectChat(chat); // re-render
-          } catch (err) {
-            alert('Failed to unblock user.');
-          }
-        };
+        await apiFetch(`${API_MODERATION_BASE}/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
+      } else {
+        await apiFetch(`${API_MODERATION_BASE}/block`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
       }
-      await renderChatList();
-      await loadMessages(chat);
+      await selectChat(chat); // re-render
+    } catch (err) {
+      alert('Failed to update block status: ' + err);
     }
+  };
 
-    async function renderChatList() {
-      if (!chats.length) {
-        chatList.innerHTML = '<div class="no-chat"><span class="empty-icon">🗨️</span> No chats yet. Start a conversation from your dashboard!</div>';
-        return;
-      }
-      // Fetch blocked list once for all chats
-      let blockedList = [];
+  // --- Disable send button if banned ---
+  if (isBanned) {
+    sendButton.disabled = true;
+    chatForm.disabled = true;
+  // Prevent any form submission
+    chatForm.onsubmit = (e) => e.preventDefault();
+    sendButton.onclick = (e) => e.preventDefault();
+    sendButton.textContent = "User is banned";
+    sendButton.style.background = "#b91c1c";
+    sendButton.style.color = "#fff";
+    messagesDiv.innerHTML = '<div class="no-messages" style="color:#b91c1c;font-weight:600"><span class="empty-icon">🚫</span> This user has been banned. You cannot send messages.</div>';
+    return;
+  }
+
+  // Update send button if blocked
+  sendButton.textContent = isBlocked ? 'Unblock' : 'Send';
+  // Ensure the form and button are re-enabled for non-banned chats
+  sendButton.disabled = false;
+  chatForm.disabled = false;
+  // Restore the form submit handler (same behavior as the global handler)
+  chatForm.onsubmit = async e => {
+    e.preventDefault();
+    const text = messageInput.value.trim();
+    if (!text) return;
+    await sendMessage(text);
+  };
+  // Reset any button inline styles applied for the banned state
+  sendButton.style.background = '';
+  sendButton.style.color = '';
+  sendButton.onclick = null;
+
+  if (isBlocked) {
+    sendButton.onclick = async (e) => {
+      e.preventDefault();
+      if (!otherUid) return;
       try {
-        const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
-        blockedList = Array.isArray(res.blocked) ? res.blocked : [];
-      } catch (e) {
-        blockedList = [];
+        await apiFetch(`${API_MODERATION_BASE}/unblock`, { method: 'POST', body: JSON.stringify({ uid: CURRENT_UID, targetUid: otherUid }) });
+        await selectChat(chat); // re-render
+      } catch (err) {
+        alert('Failed to unblock user.');
       }
-      chatList.innerHTML = "";
-      for (const chat of chats) {
-        const otherParticipant = chat.participants.find(p => p.uid !== CURRENT_UID);
-        const otherUid = otherParticipant ? otherParticipant.uid : null;
-        const otherUser = otherParticipant ? otherParticipant.username : "Unknown";
-        const isBlocked = otherUid && blockedList.includes(otherUid);
-       const isUnread = chat.lastMessage?.status === "unread" && chat.lastMessage?.senderId !== CURRENT_UID;
-        
-        const div = document.createElement("div");
-        div.className = "chat-item" + (selectedChat?.chatId === chat.chatId ? " active" : "");
-        div.setAttribute('tabindex', '0');
-        div.setAttribute('role', 'button');
-        div.setAttribute('aria-label', `Chat with ${otherUser}`);
-        div.innerHTML = `
-          <div class="chat-user" style="display:flex; align-items:center; gap:6px; overflow:hidden;">
-           <span class="username" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
-           ${escapeHtml(otherUser)}${isBlocked ? ' (Blocked)' : ''}
-          </span>
-           ${isUnread ? `<span class="unread-dot" style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:#c084fc;"></span>` : ""}
-             </div>
-           `;
-        div.onclick = () => {
-          if (!selectedChat || selectedChat.chatId !== chat.chatId) {
-            selectChat(chat);
-          }
-        };
-        div.onkeydown = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') div.click();
-        };
-        chatList.appendChild(div);
-      }
-      chatList.onscroll = () => {
-        if (chatList.scrollTop + chatList.clientHeight >= chatList.scrollHeight - 10 && chatsNextPage && !loadingChats) {
-          loadChats(chatsNextPage);
-        }
-      };
-    }
+    };
+  }
+  await renderChatList();
+  await loadMessages(chat);
+}
+
+
 
     async function renderMessages() {
       // Check if blocked
@@ -552,7 +656,7 @@
         const otherParticipant = selectedChat.participants.find(p => p.uid !== CURRENT_UID);
         const otherUid = otherParticipant ? otherParticipant.uid : null;
         try {
-          const res = await apiFetch(`/api/moderation/listBlocked/${CURRENT_UID}`);
+          const res = await apiFetch(`${API_MODERATION_BASE}/listBlocked/${CURRENT_UID}`);
           isBlocked = Array.isArray(res.blocked) && otherUid && res.blocked.includes(otherUid);
         } catch (e) {
           isBlocked = false;
@@ -601,7 +705,7 @@
                     if (!reporterUsername && userCache && userCache[CURRENT_UID]) {
                       reporterUsername = userCache[CURRENT_UID];
                     }
-                    const response = await fetch('/api/moderation/report', {
+                    const response = await fetch('${API_MODERATION_BASE}/report', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

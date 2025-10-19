@@ -10,7 +10,7 @@ const CONFIG = {
     API_TIMEOUT: 15000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    BACKEND_URL: 'https://binarybandits-matchmakingapi.onrender.com/api/match',
+    BACKEND_URL: 'https://binarybandits-matchapi.onrender.com/api/match',
     BACKEND_PROFILE_URL: 'https://binarybandits-profileapi.onrender.com/api/profile'
 };
 
@@ -488,39 +488,43 @@ function showMatchModal(profile) {
     modal.style.justifyContent = "center";
     modal.style.zIndex = "9999";
 
-    // Modal content
+    // Modal content using existing CSS classes
     modal.innerHTML = `
-        <div style="
-            background: #fff;
-            border-radius: 12px;
-            padding: 2rem 2.5rem;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-            text-align: center;
-            position: relative;
-        ">
+        <div class="form-section" style="max-width: 420px; width: 100%; position: relative; text-align: center;">
             <button id="closeModalBtn" style="
                 position: absolute;
-                top: 12px;
-                right: 12px;
+                top: 18px;
+                right: 18px;
                 background: none;
                 border: none;
-                font-size: 1.5rem;
+                font-size: 2rem;
+                color: #667eea;
                 cursor: pointer;
-            ">&times;</button>
-            <h2>You've been matched!</h2>
-            <div style="margin-bottom: 1rem;">
-                <strong>Username:</strong> <span>${profile.username || "Unknown"}</span><br>
-                <strong>Bio:</strong> <span>${profile.bio || "No bio available"}</span><br>
-                <strong>Region:</strong> <span>${profile.region || "N/A"}</span><br>
-                <strong>Languages:</strong> <span>${(profile.languages || []).join(", ") || "None"}</span><br>
-                <strong>Hobbies:</strong> <span>${(profile.hobbies || []).join(", ") || "None"}</span>
+                line-height: 1;
+            " aria-label="Close">&times;</button>
+            <div class="form-title" style="justify-content: center; margin-bottom: 1.2rem;">
+                <span style="font-size:2rem;">🎉</span> You've been matched!
             </div>
-            
-            <div style="display:flex;gap:1rem;justify-content:center;">
-                <button id="sendRequestBtnModal" class="btn btn-primary">Send Penpal Request</button>
-                <button id="sendOneTimeMsgBtn" class="btn btn-secondary">Send One-Time Message</button>
+            <div style="margin-bottom: 1.5rem; font-size: 1.08rem; color: #374151;">
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Username:</strong> <span style="color:#667eea;font-weight:600;">${profile.username || "Unknown"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Bio:</strong> <span>${profile.bio || "No bio available"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Region:</strong> <span>${profile.region || "N/A"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Languages:</strong> <span>${(profile.languages || []).join(", ") || "None"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Hobbies:</strong> <span>${(profile.hobbies || []).join(", ") || "None"}</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;">
+                <button id="sendRequestBtnModal" class="submit-btn" style="min-width:140px;">Send Penpal Request</button>
+                <button id="sendOneTimeMsgBtn" class="submit-btn" style="background:linear-gradient(135deg,#38a169 0%,#48bb78 100%);min-width:140px;">Send One-Time Message</button>
             </div>
         </div>
     `;

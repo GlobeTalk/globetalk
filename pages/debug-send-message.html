@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Debug Send Message</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; background: #f7f7f7; }
+    label { display: block; margin-top: 1em; }
+    input, textarea { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 1em; padding: 10px 20px; font-size: 1em; }
+    .log { background: #222; color: #fff; padding: 10px; margin-top: 1em; font-size: 0.95em; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>Send Message Debug Page</h2>
+  <form id="msgForm">
+    <label>Current User ID (from Firebase):
+      <input type="text" id="currentUid" readonly>
+    </label>
+    <label>Recipient User ID (from profile page):
+      <input type="text" id="recipientId">
+    </label>
+    <label>Message:
+      <textarea id="msgText" rows="3" required></textarea>
+    </label>
+    <button type="submit">Send Message</button>
+  </form>
+  <div class="log" id="log"></div>
+  <script type="module">
+    import { observeUser } from "../src/services/firebase.js";
+
+    const API_URL = "/api/chat/send";
+    const currentUidInput = document.getElementById('currentUid');
+    const recipientIdInput = document.getElementById('recipientId');
+    const msgText = document.getElementById('msgText');
+    const msgForm = document.getElementById('msgForm');
+    const logDiv = document.getElementById('log');
+
+    // Get ?targetUser=... from URL
+    function getQueryParam(param) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      } catch (e) { return null; }
+    }
+
+    let ID_TOKEN = null;
+    let CURRENT_UID = null;
+
+    function log(...args) {
+      logDiv.textContent += args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : a).join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(...args);
+    }
+
+    // Set recipientId from URL if present
+    const urlRecipient = getQueryParam('targetUser');
+    if (urlRecipient) recipientIdInput.value = urlRecipient;
+
+    observeUser(async user => {
+      if (!user) {
+        log('Not logged in. Redirecting to login.');
+        window.location.href = '/pages/login.html';
+        return;
+      }
+      CURRENT_UID = user.uid;
+      currentUidInput.value = CURRENT_UID;
+      ID_TOKEN = await user.getIdToken();
+      log('Logged in as:', CURRENT_UID);
+    });
+
+    msgForm.onsubmit = async e => {
+      e.preventDefault();
+      const recipientId = recipientIdInput.value.trim();
+      const text = msgText.value.trim();
+      if (!recipientId || !text) {
+        log('Recipient and message required.');
+        return;
+      }
+      log('Sending message:', { from: CURRENT_UID, to: recipientId, text });
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${ID_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ recipientId, text })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          log('Error:', data);
+        } else {
+          log('Success:', data);
+        }
+      } catch (err) {
+        log('Network error:', err);
+      }
+    };
+  </script>
+</body>
+</html>

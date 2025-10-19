@@ -3,21 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GlobeTalk – Login</title>
-  <script type="module" crossorigin src="/assets/login-QsxKmDZO.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/firebase-BrtCog--.js">
-  <link rel="modulepreload" crossorigin href="/assets/admin-CP7GV2WY.js">
-  <link rel="stylesheet" crossorigin href="/assets/login-DmWtcItk.css">
+  <title>GlobeTalk – Login</title>
+  <link rel="stylesheet" href="../src/frontend/styles/login.css">
 </head>
 <body>
   <main class="login-wrapper">
     <section class="section-card login-left">
       <h1 class="logo">🌍 GlobeTalk</h1>
       <div class="illustrations">
-        <img src="/assets/user1-Dgk05Uw3.png" alt="female user">
-        <img src="/assets/globe-B32PjQZ9.webp" class="globe" alt="globe">
-        <img src="/assets/user2-DSNiAP2o.png" alt="male user">
+        <img src="./images/user1.png" alt="female user">
+        <img src="./images/globe.webp" class="globe" alt="globe">
+        <img src="./images/user2.png" alt="male user">
       </div>
       <div class="welcome">
         <h2>Hello, <span>Welcome!</span></h2>
@@ -36,12 +32,13 @@
     </section>
     <section class="section-card login-right">
       <button id="loginBtn" class="google-btn" aria-label="Continue with Google">
-        <img src="/assets/google-icon-DcV3koss.png" alt="Google logo">
+        <img src="./images/google-icon.png" alt="Google logo">
         Continue with Google
       </button>
       <div id="statusMessage" class="statusMessage"></div>
     </section>
-  </main>
+  </main>
+  <script type="module" src="../src/frontend/scripts/login.js"></script>
 
 </body>
 </html>

@@ -39,7 +39,7 @@ onAuthStateChanged(auth, async (user) => {
 
   try {
     const idToken = await user.getIdToken();
-    const res = await fetch("/api/profile", {
+    const res = await fetch("https://binarybandits-profileapi.onrender.com/api/profile", {
       headers: { Authorization: `Bearer ${idToken}` }
     });
     if (!res.ok) throw new Error("Failed to fetch profile");
@@ -103,7 +103,7 @@ function setupFormListener(formElement, user) {
     }
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch("/api/profile", {
+      const res = await fetch("https://binarybandits-profileapi.onrender.com/api/profile", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

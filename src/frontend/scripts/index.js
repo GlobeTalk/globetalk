@@ -1,11 +1,10 @@
 // src/frontend/scripts/index.js
-
 export function redirectToLogin(win = window) {
-  win.location.href = './pages/login.html';
+  win.location.href = '../../../pages/login.html';
 }
 
 export function goToLogin(navigate = (url) => { window.location.href = url; }) {
-  navigate('./pages/login.html');
+  navigate('../../../pages/login.html');
 }
 
 export function setupGetStartedBtn() {

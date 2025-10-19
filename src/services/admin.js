@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5000/api/moderation"; // Adjust if needed
+const API_BASE = "https://binarybandits-moderationapi.onrender.com/api/moderation"; // Adjust if needed
 
 async function apiRequest(endpoint, method = "GET", body = null, token = null) {
     const opts = {

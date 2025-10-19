@@ -8,7 +8,7 @@ const app = express();
 // ✅ Configure CORS properly
 app.use(cors({
   origin: [
-    "https://globetalk-fedbgzgzaactd8fj.southafricanorth-01.azurewebsites.net/",  // our Azure-deployed frontend
+    "https://globetalk.github.io/globetalk/",  // our Azure-deployed frontend
     "http://localhost:5173"                 // optional: for local testing
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],

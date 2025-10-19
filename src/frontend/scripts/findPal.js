@@ -5,7 +5,7 @@ const CONFIG = {
     API_TIMEOUT: 15000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    BACKEND_URL: 'http://localhost:8082/api/match'
+    BACKEND_URL: 'https://binarybandits-matchmakingapi.onrender.com'
 };
 
 // Utility: Delay function for retries

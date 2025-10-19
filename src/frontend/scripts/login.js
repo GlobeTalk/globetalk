@@ -1,15 +1,22 @@
-import { auth, observeUser } from "../../services/firebase.js";
+// --- Google Sign-In Helper ---
+/*import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  return { user: result.user };
+}*/
+import { auth, observeUser, signInWithGoogle } from "../../services/firebase.js";
 
 import { isBannedUser, isAdmin } from "../../services/admin.js"; 
 
 // ------------------ CONFIGURATION ------------------
 const CONFIG = {
-  API_BASE_URL: 'https://binarybandits-auth.onrender.com/api',
+  API_BASE_URL: 'https://binarybandits-auth.onrender.com',
   PAGES: {
-    LOGIN: './pages/login.html',          // updated for dist/ folder
-    DASHBOARD: './pages/userdashboard.html',
-    ONBOARDING: './pages/onboarding.html',
-    ADMIN_DASHBOARD: './pages/admin.html' 
+    LOGIN: '../../../pages/login.html',          // updated for dist/ folder
+    DASHBOARD: '../../../pages/userdashboard.html',
+    ONBOARDING: '../../../pages/onboarding.html',
+    ADMIN_DASHBOARD: '../../../pages/admin.html' 
   },
   STORAGE_KEYS: {
     ID_TOKEN: 'idToken',
@@ -78,7 +85,7 @@ const utils = {
       }
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (!url || !url.startsWith('./')) {
+      if (!url || !url.startsWith('./') && !url.startsWith('../')) {
         throw new Error('Invalid navigation URL');
       }
 
@@ -140,7 +147,7 @@ async function checkIfUserExists(userId) {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/profile/${sanitizedUserId}/exists`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/users/${sanitizedUserId}/exists`, {
           method: 'GET',
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -283,9 +290,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const { user } = await signInWithGoogle();
-
+      console.log("✅ Google sign-in successful:", user);
       if (!user || !user.uid) throw new AuthError('Invalid user data received', 'INVALID_USER_DATA');
-
+      
       const idToken = await utils.retryOperation(() => user.getIdToken(true));
 
       const banned = await isBannedUser(user.uid, idToken);
@@ -299,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (adminUser) await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
       else if (existingUser) await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
-      else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+      //else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
 
     } catch (error) {
       console.error("❌ Login failed:", error);

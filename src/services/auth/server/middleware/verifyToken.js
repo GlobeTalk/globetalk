@@ -6,7 +6,7 @@ import  {admin} from "../firebaseAdmin.js";
  * Usage: app.use("/secure", verifyToken, secureRoute);
  */
 export async function verifyToken(req, res, next) {
-  const authHeader = req.headers.authorization || "";
+  const authHeader = req.headers.authorization;
   if (!authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Missing or invalid Authorization header" });
   }

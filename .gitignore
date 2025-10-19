@@ -144,3 +144,5 @@ src/services/moderation-api/serviceAccountkey.json
 
 # Environment variables
 .env
+.vercel
+

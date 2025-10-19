@@ -57,6 +57,7 @@
 
   <script type="module">
     import { observeUser, observeToken } from "../src/services/firebase.js";
+    import("../src/frontend/scripts/chatModal.js");
 
     const API_BASE = "/api/chat";
     const API_PROFILE_BASE = "https://binarybandits-profileapi.onrender.com/api/profile";
@@ -74,7 +75,6 @@
 
     const MAX_RETRY_ATTEMPTS = 3;
     const RETRY_DELAY = 1000;
-
     let chats = [];
     let selectedChat = null;
     let messages = [];
@@ -101,18 +101,14 @@
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
       this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
-      // Disable send button if input is empty
+      this.style.height = this.scrollHeight + 'px';
       sendButton.disabled = !this.value.trim();
     });
-
-    // Initial state: disable send button
     sendButton.disabled = true;
 
     // Emoji picker functionality
     emojiButton.addEventListener('click', () => {
       emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
-      // Add back button if not already present
       if (!document.getElementById('emojiBackBtn')) {
         const backBtn = document.createElement('button');
         backBtn.id = 'emojiBackBtn';
@@ -123,7 +119,6 @@
       }
     });
 
-    // Do NOT hide the picker on emoji click anymore
     emojiPicker.addEventListener('emoji-click', event => {
       const emoji = event.detail.unicode;
       const textarea = messageInput;
@@ -133,16 +128,10 @@
       textarea.value = text.slice(0, start) + emoji + text.slice(end);
       textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
       textarea.focus();
-      // emojiPicker.style.display = 'none'; // <-- REMOVE or COMMENT OUT this line
     });
 
-    // Close emoji picker when clicking outside or on back button
     document.addEventListener('click', (event) => {
-      if (
-        emojiPicker.style.display === 'block' &&
-        !emojiPicker.contains(event.target) &&
-        event.target !== emojiButton
-      ) {
+      if (emojiPicker.style.display === 'block' && !emojiPicker.contains(event.target) && event.target !== emojiButton) {
         emojiPicker.style.display = 'none';
       }
     });
@@ -160,13 +149,9 @@
       try {
         const d = typeof ts === "number" ? new Date(ts) : ts.toDate ? ts.toDate() : new Date(ts);
         if (isNaN(d.getTime())) return "";
-        
         const now = new Date();
         const diffMs = now - d;
-        const diffSec = Math.floor(diffMs / 1000);
-        const diffMin = Math.floor(diffSec / 60);
-        const diffHr = Math.floor(diffMin / 60);
-        
+        const diffHr = Math.floor(diffMs / 3600000);
         if (diffHr < 24) {
           return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
@@ -195,7 +180,6 @@
     async function getUsername(userId) {
       if (!userId) return "Unknown";
       if (userCache[userId]) return userCache[userId];
-      
       try {
         const res = await fetch(`/api/user/profile/${userId}`);
         if (!res.ok) throw new Error("Not found");
@@ -240,15 +224,11 @@
         chats = pageToken ? chats.concat(data.chats || []) : (data.chats || []);
         chatsNextPage = data.nextPageToken;
         await renderChatList();
-        // If targetUser param is present, auto-select or create chat
         if (TARGET_USER_ID && CURRENT_UID) {
           let chat = chats.find(c => c.participants.some(p => p.uid === TARGET_USER_ID));
           if (chat) {
             await selectChat(chat);
           } else {
-            // No chat exists, set up for new message
-            selectedChat = null;
-            // Get targetUsername from query param
             const TARGET_USERNAME = getQueryParam('targetUsername');
             chatHeader.innerHTML = `
               <span class="chat-avatar" style="display:inline-block;width:32px;height:32px;border-radius:50%;background:#c7d2fe;margin-right:10px;vertical-align:middle;">
@@ -272,8 +252,7 @@
     }
 
     async function loadMessages(chat, pageToken = null) {
-      if (!chat) return;
-      if (loadingMessages) return;
+      if (!chat || loadingMessages) return;
       loadingMessages = true;
       let url = `${API_BASE}/chats/${chat.chatId}/messages?pageSize=20`;
       if (pageToken) url += `&pageToken=${pageToken}`;
@@ -292,7 +271,6 @@
 
     async function sendMessage(text) {
       if (!selectedChat) {
-        // No chat exists yet, so create it first
         const targetUserId = getQueryParam('targetUser');
         const targetUsername = getQueryParam('targetUsername');
         const chatType = getQueryParam('type'); // <-- Add this line
@@ -303,7 +281,6 @@
         sendButton.disabled = true;
         sendButton.textContent = "Creating chat...";
         try {
-          // Fetch current user's username
           let myUsername = null;
           try {
             // Use /api/profile for current user (no userId param)
@@ -311,8 +288,6 @@
             if (res.ok) {
               const data = await res.json();
               myUsername = data.username || null;
-            } else {
-              console.warn('Could not fetch current user username, status:', res.status);
             }
           } catch (e) { console.warn('Could not fetch current user username', e); }
           if (!myUsername) {
@@ -321,7 +296,6 @@
             sendButton.textContent = "Send";
             return;
           }
-          // Create chat
           const chatRes = await retryOperation(() => apiFetch(`${API_BASE}/chats`, {
             method: "POST",
             body: JSON.stringify({
@@ -332,10 +306,8 @@
               type: chatType // <-- Pass the type to the backend
             })
           }));
-          // Use chatId returned from API
           const newChatId = chatRes.chatId;
           if (!newChatId) throw new Error("Chat creation failed: No chatId returned");
-          // Fetch the new chat details
           let chat = null;
           try {
             const chatDetailRes = await retryOperation(() => apiFetch(`${API_BASE}/chats/${newChatId}`));
@@ -346,13 +318,12 @@
             console.warn('Could not fetch new chat details', e);
           }
           if (!chat) {
-            // fallback: reload all chats and try to find it
             await loadChats();
             chat = chats.find(c => c.chatId === newChatId);
             if (!chat) throw new Error("Chat creation failed: Chat not found");
           }
           selectedChat = chat;
-          await sendMessage(text); // Recursively send message now that chat exists
+          await sendMessage(text);
         } catch (e) {
           console.error('Error creating chat:', e);
           alert("Failed to create chat. Please try again.");
@@ -650,7 +621,6 @@ async function selectChat(chat) {
 
 
     async function renderMessages() {
-      // Check if blocked
       let isBlocked = false;
       if (selectedChat) {
         const otherParticipant = selectedChat.participants.find(p => p.uid !== CURRENT_UID);
@@ -696,7 +666,6 @@ async function selectChat(chat) {
                     const otherParticipant = selectedChat.participants.find(p => p.uid !== CURRENT_UID);
                     const reportedUid = otherParticipant ? otherParticipant.uid : null;
                     const reportedUsername = otherParticipant ? otherParticipant.username : null;
-                    // Use current user's username from selectedChat or userCache
                     let reporterUsername = null;
                     if (selectedChat && Array.isArray(selectedChat.participants)) {
                       const me = selectedChat.participants.find(p => p.uid === CURRENT_UID);
@@ -797,8 +766,6 @@ async function selectChat(chat) {
         sendButton.disabled = !messageInput.value.trim();
       }
     });
-    // Import modal utility for flagging
-    import("../src/frontend/scripts/chatModal.js");
   </script>
 </body>
 </html>

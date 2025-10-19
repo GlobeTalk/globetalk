@@ -15,21 +15,21 @@ function getMillis(ts) {
   return null;
 }
 
-
 // POST /chats — Create a new chat
 export async function createChat(req, res) {
-  const { participants, type } = req.body; // [{ uid, username }, ...]
+  const { participants, type } = req.body;
   if (!Array.isArray(participants) || participants.length !== 2) {
     return res.status(400).json({ success: false, error: "Exactly two participants required" });
   }
-  // Sort participants by uid for consistent comparison
   const sortedUids = participants.map(p => p.uid).sort();
   const participantUids = participants.map(p => p.uid);
+  
   try {
     // Find existing chat with exactly these two participants
     const snapshot = await db.collection("chats")
       .where("participantUids", "array-contains", sortedUids[0])
       .get();
+      
     let existingChat = null;
     snapshot.forEach(doc => {
       const chat = doc.data();
@@ -40,9 +40,11 @@ export async function createChat(req, res) {
         }
       }
     });
+    
     if (existingChat) {
       return res.status(200).json({ success: true, chatId: existingChat.id, chat: existingChat });
     }
+    
     // No existing chat, create new
     const newChatRef = await db.collection("chats").add({
       participants,
@@ -52,6 +54,7 @@ export async function createChat(req, res) {
       type: type || "penpal",
       
     });
+    
     const chatDoc = await newChatRef.get();
     res.status(201).json({ success: true, chatId: chatDoc.id, chat: chatDoc.data() });
   } catch (err) {
@@ -95,6 +98,7 @@ export async function sendMessage(req, res) {
       text: encryptedText,
       timestamp: new Date(),
     };
+    
     await db.collection("chats").doc(chatId).collection("messages").add(message);
     await db.collection("chats").doc(chatId).update({
       lastMessage: { senderId, text: encryptedText, timestamp: new Date(), status: 'unread' },
@@ -137,13 +141,19 @@ export async function fetchMessages(req, res) {
     if (pageToken) messagesRef = messagesRef.startAfter(new Date(Number(pageToken)));
     const snapshot = await messagesRef.get();
     const now = Date.now();
+    
     let messages = snapshot.docs.map(doc => {
       const data = doc.data();
-      return { ...data, id: doc.id, text: data.text ? decryptMessage(data.text) : null };
+      return { 
+        ...data, 
+        id: doc.id, 
+        text: data.text ? decryptMessage(data.text) : null 
+      };
     }).filter(msg => {
       const ts = getMillis(msg.timestamp);
       return msg.senderId === currentUserId || (ts !== null && now - ts >= PENPAL_DELAY);
     });
+    
     let nextPageToken = null;
     if (messages.length > pageSize) {
       const lastMsg = messages[pageSize - 1];
@@ -167,11 +177,13 @@ export async function fetchLatestChats(req, res) {
     if (pageToken) chatsRef = chatsRef.startAfter(new Date(Number(pageToken)));
     const snapshot = await chatsRef.get();
     let docs = snapshot.docs;
+    
     let nextPageToken = null;
     if (docs.length > pageSize) {
       nextPageToken = docs[pageSize - 1].data().lastUpdated.toMillis();
       docs = docs.slice(0, pageSize);
     }
+    
     const chats = docs.map(doc => {
       const data = doc.data();
       const lastMessage = data.lastMessage ? {
@@ -187,6 +199,7 @@ export async function fetchLatestChats(req, res) {
         type: data.type
       };
     });
+    
     res.json({ success: true, chats, nextPageToken });
   } catch (err) {
     console.error("Fetch latest chats error:", err);
@@ -210,7 +223,6 @@ export async function getChat(req, res) {
 // DELETE /chats/:chatId — Delete a chat
 export async function deleteChat(req, res) {
   const { chatId } = req.params;
-
   try {
     const chatRef = db.collection("chats").doc(chatId);
     const chatDoc = await chatRef.get();
@@ -224,7 +236,7 @@ export async function deleteChat(req, res) {
     messagesSnapshot.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
 
-    //Delete the chat doc
+    // Delete the chat doc
     await chatRef.delete();
 
     res.json({ success: true });

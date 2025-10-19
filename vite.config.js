@@ -7,6 +7,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      external: ['cypress/**'],
       input: {
         main: resolve(__dirname, "index.html"),
         // add all the other static HTML pages you want copied into dist

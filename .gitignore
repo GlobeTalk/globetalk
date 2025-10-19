@@ -146,3 +146,8 @@ src/services/moderation-api/serviceAccountkey.json
 .env
 .vercel
 
+# .gitignore additions
+cypress/
+tests/
+coverage/
+dist/cypress/

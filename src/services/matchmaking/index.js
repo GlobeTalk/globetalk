@@ -7,9 +7,12 @@ import matchRoutes from "./routes/matchRoutes.js";
 dotenv.config();
 
 const app = express();
+app.use(cors({
+  origin: "*",
+  credentials: true
+}));
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // ✅ Firebase Admin SDK is initialized automatically on import

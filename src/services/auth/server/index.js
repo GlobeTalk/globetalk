@@ -7,10 +7,7 @@ const app = express();
 
 // ✅ Configure CORS properly
 app.use(cors({
-  origin: [
-    "https://globetalk.github.io/globetalk/",  // our Azure-deployed frontend
-    "http://localhost:5173"                 // optional: for local testing
-  ],
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));

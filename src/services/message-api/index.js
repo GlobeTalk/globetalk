@@ -3,6 +3,10 @@ import chatRoutes from "./routes/messageRoutes.js";
 
 const app = express();
 
+app.use(cors({
+  origin: "*",
+  credentials: true
+}));
 // Built-in JSON parser (no need for body-parser)
 app.use(express.json());
 

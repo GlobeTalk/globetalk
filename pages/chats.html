@@ -674,7 +674,7 @@ async function selectChat(chat) {
                     if (!reporterUsername && userCache && userCache[CURRENT_UID]) {
                       reporterUsername = userCache[CURRENT_UID];
                     }
-                    const response = await fetch('${API_MODERATION_BASE}/report', {
+                    const response = await fetch(`${API_MODERATION_BASE}/report`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

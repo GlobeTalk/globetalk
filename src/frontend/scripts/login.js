@@ -140,7 +140,6 @@ async function checkIfUserExists(userId) {
     
     return await utils.retryOperation(async () => {
       const token = utils.getSecureToken();
-      console.log("Using token for user existence check:", token);
       if (!token) {
         throw new AuthError('No valid authentication token', 'NO_TOKEN');
       }

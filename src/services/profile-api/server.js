@@ -9,10 +9,7 @@ app.use(express.json()); // parse JSON bodies
 
 // ✅ ADD CORS MIDDLEWARE:
 app.use(cors({
-  origin:  [
-    "https://globetalk.github.io/globetalk/",  // our Azure-deployed frontend
-    "http://localhost:5173"                 // optional: for local testing
-  ],
+  origin: "*",
   credentials: true
 }));
 

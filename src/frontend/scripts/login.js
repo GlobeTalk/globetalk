@@ -11,7 +11,7 @@ import { isBannedUser, isAdmin } from "../../services/admin.js";
 
 // ------------------ CONFIGURATION ------------------
 const CONFIG = {
-  AUTH_API_URL: 'https://binarybandits-auth.onrender.com/',
+  AUTH_API_URL: 'https://binarybandits-auth.onrender.com',
   MODERATION_API_URL: 'https://binarybandits-moderationapi.onrender.com/',
   PAGES: {
     LOGIN: '../../../pages/login.html',          // updated for dist/ folder
@@ -140,6 +140,7 @@ async function checkIfUserExists(userId) {
     
     return await utils.retryOperation(async () => {
       const token = utils.getSecureToken();
+      console.log("Using token for user existence check:", token);
       if (!token) {
         throw new AuthError('No valid authentication token', 'NO_TOKEN');
       }
@@ -148,7 +149,7 @@ async function checkIfUserExists(userId) {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        const response = await fetch(`${CONFIG.AUTH_API_URL}api/users/${sanitizedUserId}/exists`, {
+        const response = await fetch(`${CONFIG.AUTH_API_URL}/api/users/${sanitizedUserId}/exists`, {
           method: 'GET',
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -324,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (adminUser) await utils.safeNavigate(CONFIG.PAGES.ADMIN_DASHBOARD);
       else if (existingUser) await utils.safeNavigate(CONFIG.PAGES.DASHBOARD);
-      //else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
+      else await utils.safeNavigate(CONFIG.PAGES.ONBOARDING);
 
     } catch (error) {
       console.error("❌ Login failed:", error);
@@ -351,7 +352,8 @@ document.addEventListener("DOMContentLoaded", () => {
     authStateObserverActive = true;
 
     try {
-      if (!user) {
+      const currentPath = window.location.pathname;
+      if (!user && !currentPath.endsWith("login.html")) {
         localStorage.removeItem(CONFIG.STORAGE_KEYS.ID_TOKEN);
         await utils.safeNavigate(CONFIG.PAGES.LOGIN);
         return;

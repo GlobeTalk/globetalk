@@ -1,11 +1,17 @@
-import { auth, logout } from '../../services/firebase.js';
+import { auth} from '../../services/firebase.js';
+
+const matchContainer = document.getElementById("matchContainer");
+const sendRequestBtn = document.getElementById("sendRequestBtn");
+let currentMatch = null;
+
 
 // Configuration
 const CONFIG = {
     API_TIMEOUT: 15000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    BACKEND_URL: 'http://localhost:8082/api/match'
+    BACKEND_URL: 'https://binarybandits-matchmakingapi.onrender.com/api/match',
+    BACKEND_PROFILE_URL: 'https://binarybandits-profileapi.onrender.com/api/profile'
 };
 
 // Utility: Delay function for retries
@@ -130,43 +136,9 @@ async function languageList() {
 }
 
 // Setup logout with error handling
-function setupLogout() {
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (!logoutBtn) {
-        console.warn("Logout button not found");
-        return;
-    }
-
-    logoutBtn.addEventListener('click', async e => {
-        e.preventDefault();
-        
-        // Prevent double-clicks
-        if (logoutBtn.disabled) return;
-        logoutBtn.disabled = true;
-        
-        const originalText = logoutBtn.textContent;
-        logoutBtn.textContent = 'Logging out...';
-        
-        try {
-            await logout();
-            window.location.href = '../pages/login.html';
-        } catch (error) {
-            console.error("Logout error:", error);
-            showError('Logout failed. Redirecting anyway...');
-            
-            // Force redirect after delay even if logout fails
-            setTimeout(() => {
-                window.location.href = '../pages/login.html';
-            }, 1500);
-        } finally {
-            logoutBtn.disabled = false;
-            logoutBtn.textContent = originalText;
-        }
-    });
-}
 
 // Validate form inputs
-function validateFormInputs(language, region, interest) {
+function validateFormInputs(language, region) {
     const errors = [];
     
     if (!language || language.trim() === '') {
@@ -175,10 +147,6 @@ function validateFormInputs(language, region, interest) {
     
     if (!region || region.trim() === '') {
         errors.push('Please select a region');
-    }
-    
-    if (!interest || interest.trim() === '') {
-        errors.push('Please select an interest');
     }
     
     return errors;
@@ -237,10 +205,9 @@ function setupForm() {
         // Get form values with sanitization
         const language = form.language?.value?.trim() || '';
         const region = form.region?.value?.trim() || '';
-        const interest = form.interest?.value?.trim() || '';
 
         // Validate inputs
-        const validationErrors = validateFormInputs(language, region, interest);
+        const validationErrors = validateFormInputs(language, region);
         if (validationErrors.length > 0) {
             showError(validationErrors.join('. '));
             return;
@@ -281,8 +248,7 @@ function setupForm() {
                 },
                 body: JSON.stringify({ 
                     language: language.toLowerCase(), 
-                    region, 
-                    interest 
+                    region,
                 })
             });
 
@@ -307,12 +273,40 @@ function setupForm() {
 
             // Handle match result
             if (data.match) {
-                const matchName = data.match.username || data.match.name || data.match.id || 'a pen pal';
-                showSuccess(`Great! You've been matched with ${matchName}!`);
-                
-                setTimeout(() => {
-                    window.location.href = 'userdashboard.html';
-                }, 2000);
+                currentMatch = data.match;
+
+                let profile = {
+                    username: data.match.name || data.match.username || "Unknown",
+                    bio: data.match.bio || "",
+                    region: data.match.region || "N/A",
+                    languages: Array.isArray(data.match.languages) ? data.match.languages : [],
+                    hobbies: Array.isArray(data.match.hobbies) ? data.match.hobbies : []
+                };
+
+                // If profile data is missing/corrupted, fetch from profile API
+                if (!profile.username || !profile.region || !profile.languages.length) {
+                    try {
+                        const profileResponse = await fetch(`${CONFIG.BACKEND_PROFILE_URL}/${data.match.id}`, {
+                            method: "GET",
+                            headers: {
+                                "Authorization": `Bearer ${idToken}`
+                            }
+                        });
+                        if (!profileResponse.ok) throw new Error("Could not fetch profile");
+                        profile = await profileResponse.json();
+                    } catch (profileErr) {
+                        console.error("Error fetching matched profile:", profileErr);
+                        showError("Could not load matched user's profile.");
+                    }
+                }
+
+                // Show modal with match info and actions
+                showMatchModal(profile);
+
+                // Hide the old match container if needed
+                matchContainer.style.display = "none";
+                showSuccess(`You've been matched with ${profile.username || "a pen pal"}!`);
+                formInputs.forEach(input => input.disabled = false);
             } else {
                 showError('No matches found. Try adjusting your preferences or check back later!', 0);
                 formInputs.forEach(input => input.disabled = false);
@@ -353,6 +347,85 @@ function setupForm() {
     });
 }
 
+// Utility to get or fetch and cache the user's profile data
+async function getCurrentUserProfile(user) {
+    // Try localStorage first
+    let profile = null;
+    try {
+        const cached = localStorage.getItem("userProfile_" + user.uid);
+        if (cached) {
+            profile = JSON.parse(cached);
+            // Only use if the user id matches
+            if (profile && profile.username && profile.id === user.uid) return profile;
+        }
+    } catch (e) {
+        // Ignore JSON parse errors
+    }
+
+    // If not found, fetch from profile API and cache it
+    try {
+        const idToken = await user.getIdToken();
+        const response = await fetch(`${CONFIG.BACKEND_PROFILE_URL}`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${idToken}`
+            }
+        });
+        if (!response.ok) throw new Error("Could not fetch user profile");
+        profile = await response.json();
+        // Store with user id in key and in object
+        profile.id = user.uid;
+        localStorage.setItem("userProfile_" + user.uid, JSON.stringify(profile));
+        return profile;
+    } catch (err) {
+        console.error("Error fetching user profile from API:", err);
+        throw new Error("Could not fetch user profile");
+    }
+}
+
+// Send Pen Pal Request button logic
+if (sendRequestBtn) {
+  sendRequestBtn.addEventListener("click", async () => {
+    if (!currentMatch) return showError("No match selected.");
+
+    const user = auth.currentUser;
+    if (!user) return showError("You must be logged in.");
+
+    try {
+      const idToken = await user.getIdToken();
+      // Get profile from localStorage or fetch and cache it
+      const userProfile = await getCurrentUserProfile(user);
+
+      const response = await fetchWithRetry(`${CONFIG.BACKEND_URL}/penpals/requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          fromUsername: userProfile.username,
+          toUid: currentMatch.id,
+          toUsername: currentMatch.name || currentMatch.username || "Unknown"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send request");
+      }
+
+      showSuccess(`Request sent to ${currentMatch.name || currentMatch.username || "your match"}!`);
+      sendRequestBtn.disabled = true;
+      sendRequestBtn.textContent = "Request Sent ✅";
+
+    } catch (err) {
+      console.error("Error sending request:", err);
+      showError("Could not send request. Try again.");
+    }
+  });
+}
+
+
+
 // Check authentication status
 function checkAuthStatus() {
     return new Promise((resolve) => {
@@ -379,7 +452,7 @@ async function initialize() {
         
         // Initialize components
         await languageList();
-        setupLogout();
+    // ...existing code...
         setupForm();
         
         console.log('Application initialized successfully');
@@ -394,4 +467,110 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
+}
+
+function showMatchModal(profile) {
+    // Remove any existing modal
+    const oldModal = document.getElementById("matchModal");
+    if (oldModal) oldModal.remove();
+
+    // Create modal container
+    const modal = document.createElement("div");
+    modal.id = "matchModal";
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100vw";
+    modal.style.height = "100vh";
+    modal.style.background = "rgba(0,0,0,0.5)";
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
+    modal.style.zIndex = "9999";
+
+    // Modal content using existing CSS classes
+    modal.innerHTML = `
+        <div class="form-section" style="max-width: 420px; width: 100%; position: relative; text-align: center;">
+            <button id="closeModalBtn" style="
+                position: absolute;
+                top: 18px;
+                right: 18px;
+                background: none;
+                border: none;
+                font-size: 2rem;
+                color: #667eea;
+                cursor: pointer;
+                line-height: 1;
+            " aria-label="Close">&times;</button>
+            <div class="form-title" style="justify-content: center; margin-bottom: 1.2rem;">
+                <span style="font-size:2rem;">🎉</span> You've been matched!
+            </div>
+            <div style="margin-bottom: 1.5rem; font-size: 1.08rem; color: #374151;">
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Username:</strong> <span style="color:#667eea;font-weight:600;">${profile.username || "Unknown"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Bio:</strong> <span>${profile.bio || "No bio available"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Region:</strong> <span>${profile.region || "N/A"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Languages:</strong> <span>${(profile.languages || []).join(", ") || "None"}</span>
+                </div>
+                <div style="margin-bottom: 0.7rem;">
+                    <strong>Hobbies:</strong> <span>${(profile.hobbies || []).join(", ") || "None"}</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;">
+                <button id="sendRequestBtnModal" class="submit-btn" style="min-width:140px;">Send Penpal Request</button>
+                <button id="sendOneTimeMsgBtn" class="submit-btn" style="background:linear-gradient(135deg,#38a169 0%,#48bb78 100%);min-width:140px;">Send One-Time Message</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal handler
+    document.getElementById("closeModalBtn").onclick = () => modal.remove();
+
+    // Send Penpal Request handler
+    document.getElementById("sendRequestBtnModal").onclick = async () => {
+        const user = auth.currentUser;
+        if (!user) return showError("You must be logged in.");
+
+        try {
+            const idToken = await user.getIdToken();
+            const userProfile = await getCurrentUserProfile(user);
+
+            const response = await fetchWithRetry(`${CONFIG.BACKEND_URL}/penpal/request`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${idToken}`
+                },
+                body: JSON.stringify({
+                    fromUsername: userProfile.username,
+                    toUid: currentMatch.id,
+                    toUsername: profile.username
+                })
+            });
+
+            if (!response.ok) throw new Error("Failed to send request");
+
+            showSuccess(`Request sent to ${profile.username}!`);
+            // Remove the modal after sending the request
+            const modal = document.getElementById("matchModal");
+            if (modal) modal.remove();
+        } catch (err) {
+            console.error("Error sending request:", err);
+            showError("Could not send request. Try again.");
+        }
+    };
+
+    // Send One-Time Message handler
+    document.getElementById("sendOneTimeMsgBtn").onclick = async () => {
+        // Redirect to chats.html with query params
+        window.location.href = `chats.html?targetUser=${encodeURIComponent(currentMatch.id)}&type=onetime&targetUsername=${encodeURIComponent(profile.username)}`;
+    };
 }

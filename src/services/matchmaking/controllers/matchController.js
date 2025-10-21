@@ -16,16 +16,15 @@ export async function getRandomMatch(userId, prefs) {
     throw new Error("Invalid preferences: must be an object");
   }
 
-  const { language, region, interest } = prefs;
+  const { language, region } = prefs;
 
-  if (!language || !region || !interest) {
-    throw new Error("Language, region, and interest are required");
+  if (!language || !region) {
+    throw new Error("Language and region are required");
   }
 
   // normalize inputs for comparison
   const langNorm = language.toLowerCase();
   const regionNorm = region.toLowerCase();
-  const interestNorm = interest.toLowerCase();
 
   const userRef = db.collection("users").doc(userId);
   const userSnap = await userRef.get();
@@ -41,7 +40,7 @@ export async function getRandomMatch(userId, prefs) {
   let snapshot;
   try {
     snapshot = await usersRef
-      .where("languages", "array-contains", language) // still exact match in Firestore
+      .where("languages", "array-contains", language)
       .where("region", "==", region)
       .get();
   } catch (queryError) {
@@ -54,22 +53,15 @@ export async function getRandomMatch(userId, prefs) {
       const data = docSnap.data();
       if (!data || docSnap.id === userId) return null;
 
-      // ensure arrays
       const candidateLanguages = Array.isArray(data.languages) ? data.languages : [];
-      const candidateHobbies = Array.isArray(data.hobbies) ? data.hobbies : [];
       const candidateMatches = Array.isArray(data.matchedWith) ? data.matchedWith : [];
 
-      // normalize for comparison
       const candidateLanguagesNorm = candidateLanguages.map(l => l.toLowerCase());
-      const candidateHobbiesNorm = candidateHobbies.map(h => h.toLowerCase());
-
-      // matching logic
       const alreadyMatched = pastMatches.includes(docSnap.id) || candidateMatches.includes(userId);
       const languageMatch = candidateLanguagesNorm.includes(langNorm);
       const regionMatch = (data.region || "").toLowerCase() === regionNorm;
-      const interestMatch = candidateHobbiesNorm.includes(interestNorm);
 
-      if (alreadyMatched || !languageMatch || !regionMatch || !interestMatch) return null;
+      if (alreadyMatched || !languageMatch || !regionMatch) return null;
 
       return { id: docSnap.id, ...data };
     })
@@ -101,28 +93,211 @@ export async function getRandomMatch(userId, prefs) {
       if (currentRequesterMatches.includes(match.id) || currentMatchMatches.includes(userId)) {
         throw new Error("Users already matched (race condition detected)");
       }
-      console.log("Updating user:", userId, "with match:", match.id);
       transaction.update(userRef, {
         matchedWith: admin.firestore.FieldValue.arrayUnion(match.id)
-        
       });
-      console.log("Updating match:", match.id, "with user:", userId);
       transaction.update(matchRef, {
-        
         matchedWith: admin.firestore.FieldValue.arrayUnion(userId)
-        
       });
     });
   } catch (transactionError) {
     console.error("Transaction failed:", transactionError);
-    return null; // fail silently instead of throwing
+    return null;
   }
 
   // return safe match data
   return {
     id: match.id,
+    name: match.username || "Anonymous",
     languages: match.languages || [],
     region: match.region || "",
     hobbies: match.hobbies || [],
+    bio: match.bio || ""
   };
 }
+
+/**
+ * Send a penpal request from one user to another.
+ * @param {string} fromUid - Requesting user's UID
+ * @param {string} fromUsername - Requesting user's username
+ * @param {string} toUid - Requested user's UID
+ * @param {string} toUsername - Requested user's username
+ * @returns {Promise<Object>} - Penpal request info
+ */
+export async function sendPenpalRequest(fromUid, fromUsername, toUid, toUsername) {
+  if (!fromUid || !toUid || !fromUsername || !toUsername) {
+    throw new Error("All parameters are required");
+  }
+  if (fromUid === toUid) {
+    throw new Error("Cannot send request to yourself");
+  }
+
+  // Create a unique, sorted document ID
+  const [uidA, uidB] = [fromUid, toUid].sort();
+  const docId = `${uidA}_${uidB}`;
+  const penpalRef = db.collection("penpals").doc(docId);
+
+  // Check if a request or relationship already exists
+  const existing = await penpalRef.get();
+  if (existing.exists) {
+    const data = existing.data();
+    if (data.status === "accepted") {
+      throw new Error("You are already penpals");
+    }
+    if (
+      (data.status === "pending" && data.requestedBy === fromUid) ||
+      (data.status === "pending" && data.requestedBy === toUid)
+    ) {
+      throw new Error("A request is already pending between these users");
+    }
+  }
+
+  // Store all necessary info for both users
+  const penpalData = {
+    users: [
+      { uid: fromUid, username: fromUsername },
+      { uid: toUid, username: toUsername }
+    ],
+    userIds: [fromUid, toUid], // <-- Add this line
+    requestedBy: fromUid,
+    requestedTo: toUid,
+    status: "pending",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await penpalRef.set(penpalData);
+
+  return {
+    id: docId,
+    ...penpalData
+  };
+}
+
+/**
+ * Accept a penpal request.
+ * @param {string} docId - Penpal document ID
+ * @param {string} userId - User accepting the request
+ * @returns {Promise<void>}
+ */
+export async function acceptPenpalRequest(docId, userId) {
+  const penpalRef = db.collection("penpals").doc(docId);
+  await penpalRef.update({
+    status: "accepted",
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    acceptedBy: userId
+  });
+}
+
+/**
+ * Decline a penpal request.
+ * @param {string} docId - Penpal document ID
+ * @param {string} userId - User declining the request
+ * @returns {Promise<void>}
+ */
+export async function declinePenpalRequest(docId, userId) {
+  const penpalRef = db.collection("penpals").doc(docId);
+  await penpalRef.update({
+    status: "declined",
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    declinedBy: userId
+  });
+}
+
+/**
+ * Get all penpals for a user, paginated.
+ * @param {string} userId
+ * @param {number} [pageSize=20]
+ * @param {string} [pageToken] - Document ID to start after (for pagination)
+ * @returns {Promise<{ penpals: Array, nextPageToken: string|null }>}
+ */
+export async function getPenpals(userId, pageSize = 20, pageToken = null) {
+  if (!userId) throw new Error("userId required");
+
+  let query = db.collection("penpals")
+    .where("status", "==", "accepted")
+    .where("userIds", "array-contains", userId) // <-- Use userIds
+    .orderBy("createdAt", "desc")
+    .limit(pageSize);
+
+  if (pageToken) {
+    const lastDoc = await db.collection("penpals").doc(pageToken).get();
+    if (lastDoc.exists) {
+      query = query.startAfter(lastDoc);
+    }
+  }
+
+  const snapshot = await query.get();
+  const penpals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const nextPageToken = snapshot.docs.length === pageSize
+    ? snapshot.docs[snapshot.docs.length - 1].id
+    : null;
+
+  return { penpals, nextPageToken };
+}
+
+/**
+ * Get all pending penpal requests for a user, paginated.
+ * @param {string} userId
+ * @param {number} [pageSize=20]
+ * @param {string} [pageToken] - Document ID to start after (for pagination)
+ * @returns {Promise<{ requests: Array, nextPageToken: string|null }>}
+ */
+export async function getPendingPenpalRequests(userId, pageSize = 20, pageToken = null) {
+  if (!userId) throw new Error("userId required");
+
+  let query = db.collection("penpals")
+    .where("requestedTo", "==", userId)
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "desc")
+    .limit(pageSize);
+
+  if (pageToken) {
+    const lastDoc = await db.collection("penpals").doc(pageToken).get();
+    if (lastDoc.exists) {
+      query = query.startAfter(lastDoc);
+    }
+  }
+
+  const snapshot = await query.get();
+  const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const nextPageToken = snapshot.docs.length === pageSize
+    ? snapshot.docs[snapshot.docs.length - 1].id
+    : null;
+
+  return { requests, nextPageToken };
+}
+
+/**
+ * Get all pending penpal requests SENT BY the user, paginated.
+ * @param {string} userId
+ * @param {number} [pageSize=20]
+ * @param {string} [pageToken] - Document ID to start after (for pagination)
+ * @returns {Promise<{ requests: Array, nextPageToken: string|null }>}
+ */
+export async function getSentPenpalRequests(userId, pageSize = 20, pageToken = null) {
+  if (!userId) throw new Error("userId required");
+
+  let query = db.collection("penpals")
+    .where("requestedBy", "==", userId)
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "desc")
+    .limit(pageSize);
+
+  if (pageToken) {
+    const lastDoc = await db.collection("penpals").doc(pageToken).get();
+    if (lastDoc.exists) {
+      query = query.startAfter(lastDoc);
+    }
+  }
+
+  const snapshot = await query.get();
+  const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const nextPageToken = snapshot.docs.length === pageSize
+    ? snapshot.docs[snapshot.docs.length - 1].id
+    : null;
+
+  return { requests, nextPageToken };
+}
+
+

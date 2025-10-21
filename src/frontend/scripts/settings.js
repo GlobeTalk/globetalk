@@ -1,27 +1,11 @@
 // settings.js
-import { 
-  initializeApp 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import { 
-  getFirestore, doc, setDoc, getDoc 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  auth,onAuthStateChanged 
+} from "../../services/firebase.js";
 
-import { 
-  getAuth, onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCtAw-A06ZJvKXfbfpNu9D8rYurdgX0sVk",
-  authDomain: "globetalk-2508c.firebaseapp.com",
-  projectId: "globetalk-2508c",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-const secretCode = "groupBKPTN9";
+const BACKEND_PROFILE_URL = "https://binarybandits-profileapi.onrender.com/api/profile";
 
 // Reference to form and username text
 const formElement = document.getElementById("settingsForm");
@@ -39,7 +23,7 @@ onAuthStateChanged(auth, async (user) => {
 
   try {
     const idToken = await user.getIdToken();
-    const res = await fetch("/api/profile", {
+    const res = await fetch(`${BACKEND_PROFILE_URL}`, {
       headers: { Authorization: `Bearer ${idToken}` }
     });
     if (!res.ok) throw new Error("Failed to fetch profile");
@@ -103,7 +87,7 @@ function setupFormListener(formElement, user) {
     }
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch("/api/profile", {
+      const res = await fetch(`${BACKEND_PROFILE_URL}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

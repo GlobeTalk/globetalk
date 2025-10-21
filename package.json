@@ -4,6 +4,7 @@
   "description": "A virtual pen pal platform connecting people worldwide through text-based communication.",
   "main": "server.js",
   "type": "module",
+  "homepage": "https://globetalk.github.io/globetalk/",
   "scripts": {
     "start": "node server.js",
     "serve:frontend": "npx http-server pages -o index.html",
@@ -15,7 +16,9 @@
     "cypress:run": "cypress run",
     "dev": "vite",
     "build": "vite build",
-    "coverage:merge": "nyc merge .nyc_output coverage/merged/coverage.json && nyc report --report-dir coverage/merged --reporter=text-summary --reporter=lcov"
+    "coverage:merge": "nyc merge .nyc_output coverage/merged/coverage.json && nyc report --report-dir coverage/merged --reporter=text-summary --reporter=lcov",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist --no-history"
   },
   "engines": {
     "node": ">=20.19.0"
@@ -30,7 +33,6 @@
   "bugs": {
     "url": "https://github.com/GlobeTalk/globetalk/issues"
   },
-  "homepage": "https://github.com/GlobeTalk/globetalk#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
@@ -50,6 +52,7 @@
     "babel-plugin-istanbul": "^7.0.1",
     "cypress": "^15.3.0",
     "eslint": "^9.33.0",
+    "gh-pages": "^6.3.0",
     "globals": "^16.3.0",
     "http-server": "^14.1.1",
     "jest": "^30.1.3",

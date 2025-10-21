@@ -1,13 +1,18 @@
 import express from "express";
 import cors from "cors";  // ✅ ADD THIS!
 import profileRoutes from "./routes/profileRoutes.js";
+import cors from "cors";
 
 const app = express();
+app.use(cors()); // Enable CORS
 app.use(express.json()); // parse JSON bodies
 
 // ✅ ADD CORS MIDDLEWARE:
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin:  [
+    "https://globetalk.github.io/globetalk/",  // our Azure-deployed frontend
+    "http://localhost:5173"                 // optional: for local testing
+  ],
   credentials: true
 }));
 

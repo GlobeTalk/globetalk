@@ -1,4 +1,3 @@
-
 * {
     margin: 0;
     padding: 0;
@@ -344,4 +343,27 @@ nav ul li a:hover {
 
 .error-message.show {
     display: flex;
+}
+
+/* Button Styles */
+.btn, .submit-btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+}
+
+.btn-primary, .submit-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+    color: #fff;
 }

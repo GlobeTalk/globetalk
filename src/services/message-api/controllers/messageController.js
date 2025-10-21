@@ -1,3 +1,4 @@
+import { type } from "@testing-library/user-event/dist/cjs/utility/type.js";
 import { admin } from "../firebaseAdmin.js";
 import { encryptMessage, decryptMessage } from "./messageEncryptionController.js";
 
@@ -50,7 +51,8 @@ export async function createChat(req, res) {
       participantUids,
       lastUpdated: new Date(),
       lastMessage: null,
-      type: "penpal"
+      type: type || "penpal",
+      
     });
     
     const chatDoc = await newChatRef.get();
@@ -66,13 +68,30 @@ export async function sendMessage(req, res) {
   const { chatId } = req.params;
   const { text } = req.body;
   const senderId = req.user.uid;
-  
   if (!text) return res.status(400).json({ success: false, error: "Text is required" });
-  
   try {
     const chatDoc = await db.collection("chats").doc(chatId).get();
     if (!chatDoc.exists) return res.status(404).json({ success: false, error: "Chat not found" });
-    
+
+    // Prevent multiple messages for "onetime" chat
+    const chatData = chatDoc.data();
+
+    if (chatData.type === "onetime") {
+        const messagesSnapshot = await db
+          .collection("chats")
+          .doc(chatId)
+          .collection("messages")
+          .limit(1)
+          .get();
+
+          if (!messagesSnapshot.empty) {
+              return res.status(403).json({
+                success: false,
+                error: "Can't send multiple messages to a one-time chat.",
+              });
+            }
+    }
+
     const encryptedText = encryptMessage(text);
     const message = {
       senderId,
@@ -85,8 +104,7 @@ export async function sendMessage(req, res) {
       lastMessage: { senderId, text: encryptedText, timestamp: new Date(), status: 'unread' },
       lastUpdated: new Date(),
     });
-    
-    res.json({ success: true, message: { ...message, text }, chatId });
+    res.json({ success: true, message: { ...message, text }, chatId, type: chatData.type });
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ success: false, error: "Failed to send message" });
@@ -99,26 +117,28 @@ export async function fetchMessages(req, res) {
   const currentUserId = req.user.uid;
   const pageSize = parseInt(req.query.pageSize) || DEFAULT_PAGE_SIZE;
   const pageToken = req.query.pageToken || null;
-  
   try {
     const chatDoc = await db.collection("chats").doc(chatId).get();
     if (!chatDoc.exists) return res.status(404).json({ success: false, messages: [], nextPageToken: null });
-    
-    // Mark last message as read if it was sent by other user
+    // If the chat has a lastMessage that's unread and was sent by the other user,
+    // mark it as read now because the current user is fetching messages.
     const chatData = chatDoc.data();
-    if (chatData?.lastMessage?.status !== 'read' && chatData.lastMessage.senderId !== currentUserId) {
-      try {
-        await db.collection('chats').doc(chatId).update({ 'lastMessage.status': 'read' });
-        chatData.lastMessage.status = 'read';
-      } catch (err) {
-        console.error('Failed to update lastMessage status to read:', err);
+    if (chatData && chatData.lastMessage && chatData.lastMessage.status !== 'read') {
+      const lastMsg = chatData.lastMessage;
+      // Only update if the last message was sent by someone else (not current user)
+      if (lastMsg.senderId && lastMsg.senderId !== currentUserId) {
+        try {
+          await db.collection('chats').doc(chatId).update({ 'lastMessage.status': 'read' });
+          // update local copy so returned chat state (if used) reflects change
+          chatData.lastMessage.status = 'read';
+        } catch (err) {
+          console.error('Failed to update lastMessage status to read:', err);
+          // non-fatal — continue to fetch messages
+        }
       }
     }
-    
-    let messagesRef = db.collection("chats").doc(chatId).collection("messages")
-      .orderBy("timestamp", "desc").limit(pageSize + 1);
+    let messagesRef = db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(pageSize + 1);
     if (pageToken) messagesRef = messagesRef.startAfter(new Date(Number(pageToken)));
-    
     const snapshot = await messagesRef.get();
     const now = Date.now();
     
@@ -136,10 +156,10 @@ export async function fetchMessages(req, res) {
     
     let nextPageToken = null;
     if (messages.length > pageSize) {
-      nextPageToken = getMillis(messages[pageSize - 1].timestamp);
+      const lastMsg = messages[pageSize - 1];
+      nextPageToken = getMillis(lastMsg.timestamp);
       messages = messages.slice(0, pageSize);
     }
-    
     res.json({ success: true, messages: messages.reverse(), nextPageToken });
   } catch (err) {
     console.error("Fetch messages error:", err);
@@ -152,13 +172,9 @@ export async function fetchLatestChats(req, res) {
   const currentUserId = req.user.uid;
   const pageSize = parseInt(req.query.pageSize) || DEFAULT_PAGE_SIZE;
   const pageToken = req.query.pageToken || null;
-  
   try {
-    let chatsRef = db.collection("chats")
-      .where("participantUids", "array-contains", currentUserId)
-      .orderBy("lastUpdated", "desc").limit(pageSize + 1);
+    let chatsRef = db.collection("chats").where("participantUids", "array-contains", currentUserId).orderBy("lastUpdated", "desc").limit(pageSize + 1);
     if (pageToken) chatsRef = chatsRef.startAfter(new Date(Number(pageToken)));
-    
     const snapshot = await chatsRef.get();
     let docs = snapshot.docs;
     
@@ -190,7 +206,6 @@ export async function fetchLatestChats(req, res) {
     res.status(500).json({ success: false, error: "Failed to fetch latest chats" });
   }
 }
-
 // GET /chats/:chatId — Get chat details
 export async function getChat(req, res) {
   const { chatId } = req.params;

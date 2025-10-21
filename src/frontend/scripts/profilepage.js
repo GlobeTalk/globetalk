@@ -1,6 +1,8 @@
 import { auth } from '../../services/firebase.js';
 import { onAuthStateChanged } from "firebase/auth";
 
+        const API_PROFILE_BASE = "https://binarybandits-profileapi.onrender.com";
+
         const DEFAULT_AVATAR_SVG = `
             <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="40" cy="40" r="40" fill="#E0E0E0"/>
@@ -8,6 +10,8 @@ import { onAuthStateChanged } from "firebase/auth";
                 <ellipse cx="40" cy="60" rx="22" ry="12" fill="#BDBDBD"/>
             </svg>
         `;
+
+        const BACKEND_PROFILE_URL = "https://binarybandits-profileapi.onrender.com/api/profile";
 
         const ERROR_MESSAGES = {
             NO_USER_ID: 'Error: No userId provided in the URL.',
@@ -147,7 +151,7 @@ import { onAuthStateChanged } from "firebase/auth";
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             try {
-                const response = await fetch(`/api/profile/${encodeURIComponent(userId)}`, {
+                const response = await fetch(`${BACKEND_PROFILE_URL}/${encodeURIComponent(userId)}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${idToken}`,

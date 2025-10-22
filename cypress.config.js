@@ -5,7 +5,7 @@ export default defineConfig({
   e2e: {
     specPattern: "tests/frontend/cypress/e2e/**/*.cy.js",
     supportFile: "tests/frontend/cypress/support/e2e.js",
-    baseUrl: 'http://localhost:5173',
+    baseUrl: 'http://127.0.0.1:8080',
     setupNodeEvents(on, config) {
       codeCoverageTask(on, config);
       return config;

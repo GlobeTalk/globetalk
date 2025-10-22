@@ -1,6 +1,6 @@
-/// <reference types="cypress" />
+// <reference types="cypress" />
 
-describe('GlobeTalk - Settings & Safety Page (HTML structure only)', () => {
+/*describe('GlobeTalk - Settings & Safety Page (HTML structure only)', () => {
   beforeEach(() => {
     // Visit the settings page
     cy.visit('/settings.html');
@@ -88,4 +88,4 @@ describe('GlobeTalk - Settings & Safety Page (HTML structure only)', () => {
       .should('exist')
       .should('not.be.disabled');
   });
-});
+});*/

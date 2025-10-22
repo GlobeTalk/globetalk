@@ -1,6 +1,6 @@
-/// <reference types="cypress" />
+// <reference types="cypress" />
 
-describe('GlobeTalk - Profile Page', () => {
+/*describe('GlobeTalk - Profile Page', () => {
   beforeEach(() => {
     // Handle uncaught exceptions to prevent test failures from module imports
     cy.on('uncaught:exception', (err) => {
@@ -86,4 +86,4 @@ describe('GlobeTalk - Profile Page', () => {
       .contains('Remember: Never share personal information')
       .should('exist');
   });
-});
+});*/

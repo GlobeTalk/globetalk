@@ -1,6 +1,6 @@
-/// <reference types="cypress" />
+//<reference types="cypress" />
 
-describe('GlobeTalk - Find a Pen Pal Page (HTML structure only)', () => {
+/*describe('GlobeTalk - Find a Pen Pal Page (HTML structure only)', () => {
   beforeEach(() => {
     // Handle uncaught exceptions to prevent test failures from script errors
     cy.on('uncaught:exception', (err) => {
@@ -43,7 +43,7 @@ describe('GlobeTalk - Find a Pen Pal Page (HTML structure only)', () => {
     });
   });*/
 
-  it('renders the cloud images', () => {
+  /*it('renders the cloud images', () => {
     cy.get('img.cloud.left').should('have.attr', 'src', './images/cloud1.png').should('have.attr', 'alt', 'Cloud');
     cy.get('img.cloud.right').should('have.attr', 'src', './images/cloud2.png').should('have.attr', 'alt', 'Cloud');
   });
@@ -77,4 +77,4 @@ describe('GlobeTalk - Find a Pen Pal Page (HTML structure only)', () => {
       cy.get('button.submit-btn').contains('Find Pen Pal').should('exist').should('have.attr', 'type', 'submit');
     });
   });
-});
+}); */

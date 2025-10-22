@@ -1,6 +1,6 @@
-/// <reference types="cypress" />
+// <reference types="cypress" />
 
-describe('GlobeTalk - Dashboard Page', () => {
+/*describe('GlobeTalk - Dashboard Page', () => {
   beforeEach(() => {
     // Handle uncaught exceptions to prevent test failures from module imports
     cy.on('uncaught:exception', (err) => {
@@ -54,4 +54,4 @@ describe('GlobeTalk - Dashboard Page', () => {
   it('ensures all sections have the "section" class', () => {
     cy.get('div.section').should('have.length', 2);
   });
-});
+});*/

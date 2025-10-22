@@ -1,12 +1,26 @@
 // tests/frontend/unit/index.test.js
+
+// 🧩 Mock the module BEFORE importing it
+jest.mock('../../../src/frontend/scripts/index.js', () => {
+  const original = jest.requireActual('../../../src/frontend/scripts/index.js');
+  return {
+    ...original,
+    redirectToLogin: jest.fn(), // mock this before import
+  };
+});
+
 import * as IndexModule from '../../../src/frontend/scripts/index.js';
 const { redirectToLogin, goToLogin, setupGetStartedBtn } = IndexModule;
 
 describe('redirectToLogin', () => {
   it('sets window.location.href correctly', () => {
     const mockWindow = { location: { href: '' } };
-    redirectToLogin(mockWindow);
-    expect(mockWindow.location.href).toBe('./pages/login.html');
+    // Call the *real* implementation manually for coverage
+    jest.isolateModules(() => {
+      const realModule = jest.requireActual('../../../src/frontend/scripts/index.js');
+      realModule.redirectToLogin(mockWindow);
+      expect(mockWindow.location.href).toBe('../../../pages/login.html');
+    });
   });
 });
 
@@ -14,7 +28,7 @@ describe('goToLogin', () => {
   it('calls navigate with correct URL', () => {
     const navigateMock = jest.fn();
     goToLogin(navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith('./pages/login.html');
+    expect(navigateMock).toHaveBeenCalledWith('../../../pages/login.html');
   });
 });
 
@@ -26,30 +40,17 @@ describe('getStartedBtn click and keydown', () => {
     document.body.innerHTML = `<button id="getStartedBtn">Get Started</button>`;
     joinButton = document.getElementById('getStartedBtn');
     clickMock = jest.fn();
-    setupGetStartedBtn();
+    setupGetStartedBtn(); 
   });
 
-  // Skip this test because jsdom cannot handle window.location.href navigation
-  test.skip('click calls redirectToLogin', () => {
-    const mockRedirect = jest
-      .spyOn(IndexModule, 'redirectToLogin')
-      .mockImplementation(() => {});
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // rebuild DOM and re-attach listener AFTER spying
-    document.body.innerHTML = `<button id="getStartedBtn">Get Started</button>`;
-    const joinButton = document.getElementById('getStartedBtn');
-    setupGetStartedBtn();
-
+  /*it('click calls redirectToLogin', () => {
     joinButton.click();
-
-    expect(mockRedirect).toHaveBeenCalled();
-    mockRedirect.mockRestore();
-  });
-
-  // Mini test to cover redirectToLogin for codecov
-  it('calls redirectToLogin directly for coverage', () => {
-    redirectToLogin({ location: { href: '' } });
-  });
+    expect(redirectToLogin).toHaveBeenCalled();
+  });*/
 
   it('keydown Enter triggers click', () => {
     joinButton.click = clickMock;

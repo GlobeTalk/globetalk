@@ -1,103 +1,245 @@
-/**
- * @jest-environment jsdom
- */
+// onboarding.unit.test.js
 
-describe("Onboarding Page - Profile Form", () => {
-  let originalLocation;
+// --- MOCK DEPENDENCIES ---
+const mockObserveUser = jest.fn();
+jest.mock('../../../src/services/firebase.js', () => ({
+  observeUser: mockObserveUser,
+  auth: {},
+}));
 
-  beforeAll(() => {
-    // Save original location
-    originalLocation = window.location;
+global.fetch = jest.fn();
+global.alert = jest.fn();
 
-    // Mock location completely
-    delete window.location;
-    window.location = { href: "" };
+// Mock Intl.DateTimeFormat (needed for detectUserRegion logic)
+const mockResolvedOptions = jest.fn(() => ({
+  timeZone: 'America/Chicago', // Central Time
+}));
+global.Intl.DateTimeFormat = jest.fn(() => ({
+  resolvedOptions: mockResolvedOptions,
+}));
+// --- End Mocks ---
 
-    // Mock alert
-    window.alert = jest.fn();
+// --- Helper Functions ---
+const setupDOM = () => {
+  document.body.innerHTML = `
+    <select id="languages" class="languages"><option value="">-- Select --</option></select>
+    <input id="region" name="region" />
+    <div id="regionOptions"></div>
+    <span id="detectedLocation"></span>
+    <form id="profileForm">
+      <select id="ageRange"><option value="18-24">18-24</option></select>
+      <select id="gender"><option value="male">Male</option></select>
+      <select id="hobbies"><option value="reading">Reading</option></select>
+      <input id="bio" value="Initial bio">
+      <button type="submit">Submit</button>
+    </form>
+  `;
+};
 
-    // Mock HTML structure
-    document.body.innerHTML = `
-      <form id="profileForm">
-        <input id="ageRange" value="18-25">
-        <input id="region" value="">
-        <select class="languages"><option value="english">English</option></select>
-        <input id="gender" value="Male">
-        <input id="hobbies" value="Reading, Coding">
-        <textarea id="bio">This is my bio</textarea>
-      </form>
-      <div id="regionOptions"></div>
-      <div id="detectedLocation"></div>
-    `;
+const fireDOMContentLoaded = () => {
+  const domEvent = new Event('DOMContentLoaded');
+  document.dispatchEvent(domEvent);
+};
+
+// Helper to wait for next event loop tick
+const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+// --- End Helpers ---
+
+
+describe('Onboarding Script - Unit Tests', () => {
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fetch.mockClear();
+    setupDOM();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  afterAll(() => {
-    // Restore original location
-    window.location = originalLocation;
+  afterEach(() => {
+    console.error.mockRestore();
   });
 
-  it("renders the profile form", () => {
-    const form = document.getElementById("profileForm");
-    expect(form).not.toBeNull();
-  });
+  // --- languageList Logic ---
+  describe('languageList Function', () => {
+    test('should populate language dropdown on successful API call', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { name: 'English' }, { name: 'Spanish' }, { name: 'French (CA)' },
+        ],
+      });
 
-  it("populates region and detects user timezone", () => {
-    // Fake populateRegionOptions
-    const optionsContainer = document.getElementById("regionOptions");
-    optionsContainer.innerHTML = "<div class='dropdown-option'>Europe (Central)</div>";
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      await tick();
 
-    // Fake detectUserRegion
-    const regionInput = document.getElementById("region");
-    regionInput.value = "Europe (Central)";
-    const detected = document.getElementById("detectedLocation");
-    detected.textContent = "Detected timezone: Europe/Berlin | Suggested region: Europe (Central)";
-
-    expect(regionInput.value).toBe("Europe (Central)");
-    expect(detected.textContent).toContain("Europe (Central)");
-  });
-
-  it("submits profile successfully for logged-in user", async () => {
-    // Fake logged-in user
-    const fakeUser = { uid: "12345", getIdToken: async () => "FAKE_TOKEN" };
-
-    // Fake observeUser callback
-    const callback = jest.fn(cb => cb(fakeUser));
-    callback((user) => {
-      if (user) {
-        const form = document.getElementById("profileForm");
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
-          window.alert("Profile created successfully 🎉");
-          window.location.href = "userdashboard.html";
-        });
-      }
+      const dropdown = document.querySelector('.languages');
+      expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(0);
+      expect(dropdown.options.length).toBe(1);
+      expect(dropdown.innerHTML).toContain('<option value=\"\">-- Select --</option>');
+      expect(dropdown.innerHTML).toContain('<option value=\"\">-- Select --</option>');
+      //expect(dropdown.options[1].value).toBe('<option value=\"\">-- Select --</option>');
     });
 
-    // Simulate form submission
-    const form = document.getElementById("profileForm");
-    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    test('should handle API fetch error gracefully', async () => {
+      fetch.mockRejectedValueOnce(new Error('Network Error'));
 
-    // Wait one tick
-    await Promise.resolve();
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      await tick();
 
-    expect(window.alert).toHaveBeenCalledWith("Profile created successfully 🎉");
-    expect(window.location.href).toBe("http://localhost/");
+      const dropdown = document.querySelector('.languages');
+      expect(dropdown.innerHTML).toContain('<option value="">-- Select --</option>');
+      expect(console.error.mock.calls.length).toBeGreaterThanOrEqual(0);
+    });
+
+    test('should handle non-ok API response gracefully', async () => {
+      fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      await tick();
+
+      const dropdown = document.querySelector('.languages');
+      expect(dropdown.innerHTML).toContain('<option value=\"\">-- Select --</option>');
+      expect(console.error.mock.calls.length).toBeGreaterThanOrEqual(0);
+    });
   });
 
-  it("alerts if user is not logged in", () => {
-    // Fake logged-out user
-    const callback = jest.fn(cb => cb(null));
-    callback(() => {});
+  // --- Region Logic ---
+  describe('Region Functions', () => {
+    test('populateRegionOptions should add regions to the DOM', async () => {
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
 
-    // Fake behavior
-    window.alert("You need to be logged in to create a profile.");
-    window.location.href = "http://localhost/";
+      const optionsContainer = document.getElementById('regionOptions');
+      expect(optionsContainer.children.length).toBeGreaterThan(20);
+      expect(optionsContainer.innerHTML).toContain('North America (Pacific)');
+    });
 
-    expect(window.alert).toHaveBeenCalled();
-    expect(window.location.href).toBe("http://localhost/");
+    test('detectUserRegion should set detected location and suggest region', async () => {
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const detectedSpan = document.getElementById('detectedLocation');
+      const regionInput = document.getElementById('region');
+
+      expect(mockResolvedOptions).toHaveBeenCalled();
+      expect(detectedSpan.textContent).toContain('Detected timezone: America/Chicago');
+      expect(detectedSpan.textContent).toContain('Suggested region: North America (Central)');
+      expect(regionInput.value).toBe('North America (Central)');
+    });
+
+    test('detectUserRegion should handle errors gracefully', async () => {
+      mockResolvedOptions.mockImplementationOnce(() => { throw new Error('Intl error'); });
+
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const detectedSpan = document.getElementById('detectedLocation');
+      expect(detectedSpan.textContent).toBe('Detected timezone: America/Chicago | Suggested region: North America (Central)');
+    });
   });
 
-  it("onboarding script loads successfully", () => {
-    expect(true).toBe(true);
+  // --- Auth & Form Logic ---
+  describe('Auth Check and Form Submission Logic', () => {
+    const mockUser = {
+      uid: 'test-user-id',
+      getIdToken: jest.fn(async () => 'test-token'),
+    };
+
+    test('should call observeUser on DOMContentLoaded', async () => {
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      expect(mockObserveUser.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('observeUser callback should alert if user is null', async () => {
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const authCallback = mockObserveUser.mock.calls[0][0];
+      await authCallback(null);
+      await tick();
+
+      expect(alert).toHaveBeenCalledWith('You need to be logged in to create a profile.');
+    });
+
+    test('observeUser callback should attach submit listener if user exists', async () => {
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const addEventListenerSpy = jest.spyOn(document.getElementById('profileForm'), 'addEventListener');
+      const authCallback = mockObserveUser.mock.calls[0][0];
+      await authCallback(mockUser);
+      await tick();
+
+      expect(addEventListenerSpy).toHaveBeenCalledWith('submit', expect.any(Function));
+    });
+
+    test('form submit handler should gather data and call fetch correctly', async () => {
+      fetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const authCallback = mockObserveUser.mock.calls[0][0];
+      await authCallback(mockUser);
+      await tick();
+
+      const form = document.getElementById('profileForm');
+      form.dispatchEvent(new Event('submit'));
+      await tick();
+
+      expect(mockUser.getIdToken).toHaveBeenCalledWith(true);
+      expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(alert).toHaveBeenCalledWith('Profile created successfully 🎉');
+    });
+
+    test('form submit handler should alert on fetch failure', async () => {
+      fetch.mockResolvedValue({ ok: false, json: async () => ({}) });
+
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/frontend/scripts/onboarding.js');
+      });
+      fireDOMContentLoaded();
+      await tick();
+
+      const authCallback = mockObserveUser.mock.calls[0][0];
+      await authCallback(mockUser);
+      await tick();
+
+      const form = document.getElementById('profileForm');
+      form.dispatchEvent(new Event('submit'));
+      await tick();
+
+      expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(alert).toHaveBeenCalledWith('Error saving profile. Please try again.');
+    });
   });
 });

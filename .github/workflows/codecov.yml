@@ -29,7 +29,7 @@ jobs:
       - name: Run Cypress tests
         run: |
           npm run serve:frontend &
-          npx wait-on http://127.0.0.1:8081
+          npx wait-on http://127.0.0.1:8080
           npm run test:e2e
 
       - name: Merge coverage reports

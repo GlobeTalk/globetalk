@@ -20,6 +20,13 @@ A virtual pen pal platform connecting people worldwide through text, audio, and 
 
 ---
 
+## IMPORTANT LINKS
+- Vercel link for our web-app :https://globetalk-beta.vercel.app/
+- Notion link :https://momentous-pig-4fb.notion.site/GlobeTalk-250a7757ae3e80328070f783237852ad?source=copy_link
+- figma link one first prototype : https://www.figma.com/proto/xTCMGCiajJIuv93BcpIZch/Merged?node-id=0-1&t=QihD0UAWuz8pbqDc-1
+- figma link two second prototype : https://www.figma.com/design/su8n50v87xk90PsSpDsM69/Untitled?t=QihD0UAWuz8pbqDc-1
+- documentation site link :https://bonganenobela.github.io/mygitactions/GlobeTalk_Privacy_Policy/
+
 ## 📖 About the Project
 GlobeTalk is an online platform that connects people from different countries to exchange messages, learn languages, and share cultures. The system matches users based on interests, language preferences, and availability.
 
